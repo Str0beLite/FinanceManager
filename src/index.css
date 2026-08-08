@@ -1,0 +1,113 @@
+@import 'tailwindcss';
+
+/*
+ * Every colour, radius and shadow the app uses is declared here once.
+ * Retuning the look of the whole app means editing this block and nothing else.
+ */
+@theme {
+  --color-surface: oklch(100% 0 0);
+  --color-surface-muted: oklch(97.5% 0.004 265);
+  --color-surface-raised: oklch(100% 0 0);
+  --color-border-subtle: oklch(92% 0.006 265);
+  --color-content: oklch(21% 0.02 265);
+  --color-content-muted: oklch(52% 0.02 265);
+
+  --color-brand: oklch(58% 0.16 265);
+  --color-brand-strong: oklch(50% 0.17 265);
+  --color-brand-soft: oklch(96% 0.02 265);
+
+  --color-positive: oklch(60% 0.15 155);
+  --color-positive-soft: oklch(96% 0.03 155);
+  --color-warning: oklch(72% 0.16 75);
+  --color-warning-soft: oklch(96% 0.04 75);
+  --color-danger: oklch(58% 0.19 25);
+  --color-danger-soft: oklch(96% 0.03 25);
+
+  --radius-card: 0.875rem;
+}
+
+@layer theme {
+  .dark {
+    --color-surface: oklch(17% 0.015 265);
+    --color-surface-muted: oklch(21% 0.017 265);
+    --color-surface-raised: oklch(23% 0.018 265);
+    --color-border-subtle: oklch(31% 0.02 265);
+    --color-content: oklch(96% 0.005 265);
+    --color-content-muted: oklch(70% 0.015 265);
+
+    --color-brand: oklch(70% 0.15 265);
+    --color-brand-strong: oklch(78% 0.14 265);
+    --color-brand-soft: oklch(28% 0.05 265);
+
+    --color-positive: oklch(72% 0.15 155);
+    --color-positive-soft: oklch(27% 0.05 155);
+    --color-warning: oklch(80% 0.15 75);
+    --color-warning-soft: oklch(29% 0.05 75);
+    --color-danger: oklch(70% 0.17 25);
+    --color-danger-soft: oklch(28% 0.06 25);
+  }
+}
+
+/*
+ * Phone hardware insets. Every fixed-position edge (header, bottom nav, sheet)
+ * pads itself by these so nothing hides under a notch or home indicator.
+ */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/** Clears the fixed bottom tab bar on mobile so content is never trapped under it. */
+@utility pb-nav {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    /*
+     * Vertical: stops iOS bouncing the page when a sheet is scrolled to its end.
+     * Horizontal: stops the browser's edge swipe-to-go-back, which otherwise
+     * competes with this app's own swipe-between-months gesture and navigates
+     * away from it entirely.
+     */
+    overscroll-behavior: none;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-surface-muted text-content antialiased;
+    /* Kills the grey flash on tap; components show focus/active states instead. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /*
+   * iOS zooms the viewport when a focused input's text is under 16px, which
+   * leaves the page scrolled sideways. Full size on mobile, compact from sm up.
+   */
+  input,
+  select,
+  textarea {
+    @apply text-base sm:text-sm;
+  }
+
+  /* Firefox renders number spinners over our right-aligned money inputs. */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    @apply m-0 appearance-none;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
