@@ -22,7 +22,13 @@ export default function MonthSelector({ monthKey, onSelect, isClosed }: MonthSel
         >
           ‹
         </button>
-        <span className="text-content text-center text-sm font-semibold sm:min-w-40">
+        {/* Swiping changes the month without the user touching a control, so the
+            new value is announced rather than silently swapped. */}
+        <span
+          id="current-month"
+          aria-live="polite"
+          className="text-content text-center text-sm font-semibold sm:min-w-40"
+        >
           {formatMonthLabel(monthKey)}
         </span>
         <button

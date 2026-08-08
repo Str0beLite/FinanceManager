@@ -64,24 +64,42 @@ One-time setup: **Settings → Pages → Build and deployment → Source: GitHub
 After that the app is live at `https://<your-username>.github.io/FinanceManager/`.
 
 The Vite `base` is set to `/FinanceManager/`. If you rename the repository, update it
-in `vite.config.ts` to match.
+in `vite.config.ts` to match — including the PWA manifest's `start_url` and `scope`
+in the same file, or the installed app will open a 404.
 
 ## On a phone
 
-The layout is mobile-first and the phone build is the one that got tuned:
+This is a phone app first; the desktop layout is the adaptation.
 
-- Navigation is a fixed bottom tab bar in thumb reach, with all six sections
-  visible at once. It becomes a header nav from the `sm` breakpoint up.
-- Each list screen has a floating action button for its primary action.
-- Tables re-lay-out as cards below `sm`, built from the same column definitions
-  rather than a second hand-written layout.
-- Dialogs are bottom sheets on a phone and centred dialogs on a desktop.
-- Inputs render at 16px on mobile, which is what stops iOS zooming the viewport
-  when you focus a field.
-- Safe-area insets are respected, so nothing hides under a notch or home
-  indicator, and every tap target is at least 40px tall.
+**Install it.** Open the site on your phone and choose "Add to Home Screen"
+(iOS Safari: Share → Add to Home Screen; Android Chrome: menu → Install app).
+It launches full-screen with no browser chrome, its own icon, and its own entry
+in the app switcher.
 
-Add it to your home screen and it opens like an app.
+**It works offline.** A service worker precaches the whole app, and your data
+was never on a server to begin with — so it opens and works on a plane, in a
+lift, or with the signal off. When a new version ships, the app tells you and
+offers a reload rather than silently sitting on the old build.
+
+**It behaves like an app:**
+
+- Bottom tab bar in thumb reach, all six sections visible at once. Becomes a
+  header nav from the `sm` breakpoint up.
+- **Swipe left and right on the dashboard to move between months.** Vertical
+  drags are ignored, so scrolling never flips the month by accident, and the
+  browser's own edge swipe-to-go-back is suppressed so it can't hijack the
+  gesture.
+- The dashboard leads with one number — what's left to spend — instead of four
+  equal tiles, with the allocation split as a single stacked bar rather than a
+  donut that would cost 170px of height.
+- A floating action button on each list screen for its primary action.
+- Tables become cards below `sm`, built from the same column definitions rather
+  than a second hand-written layout.
+- Dialogs are bottom sheets on a phone, centred dialogs on a desktop.
+- Inputs render at 16px on mobile — below that, iOS zooms the viewport when you
+  focus a field and leaves the page scrolled sideways.
+- Safe-area insets for notch and home indicator, and every tap target is at
+  least 40px tall.
 
 ## Backups
 

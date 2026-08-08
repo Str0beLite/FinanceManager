@@ -5,11 +5,14 @@ import { useApp } from '@/hooks/useApp';
 import { useAllocationStatus } from '@/hooks/useCategories';
 import { useCurrentMonth } from '@/hooks/useMonth';
 import { useMoney } from '@/hooks/useMoney';
+import { useSwipe } from '@/hooks/useSwipe';
+import { nextMonthKey, prevMonthKey } from '@/lib/dates';
 import { IncomeCard } from '@/features/income';
 import { TransactionForm } from '@/features/transactions';
 import type { PageId } from '@/app/navigation';
 import CategoryCard from './CategoryCard';
 import DeficitBanner from './DeficitBanner';
+import MonthHero from './MonthHero';
 import MonthSelector from './MonthSelector';
 import MonthStats from './MonthStats';
 import PaycheckCard from './PaycheckCard';
@@ -37,8 +40,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const hasCategories = state.categories.some((category) => !category.archived);
 
+  // Swiping sideways moves through months, the way a native app would.
+  const swipe = useSwipe({
+    onSwipeLeft: () => selectMonth(nextMonthKey(monthKey)),
+    onSwipeRight: () => selectMonth(prevMonthKey(monthKey)),
+  });
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4 sm:gap-5" {...swipe}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <MonthSelector monthKey={monthKey} onSelect={selectMonth} isClosed={isClosed} />
         {isClosed && (
@@ -51,13 +60,23 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         )}
       </div>
 
-      <MonthStats
+      <MonthHero
         computation={computation}
         poolCents={state.rolloverPoolCents}
         isClosed={isClosed}
         canClose={canClose}
         onCloseMonth={() => dispatch({ type: 'month/close', key: monthKey })}
       />
+
+      <div className="hidden sm:block">
+        <MonthStats
+          computation={computation}
+          poolCents={state.rolloverPoolCents}
+          isClosed={isClosed}
+          canClose={canClose}
+          onCloseMonth={() => dispatch({ type: 'month/close', key: monthKey })}
+        />
+      </div>
 
       <DeficitBanner
         computation={computation}
