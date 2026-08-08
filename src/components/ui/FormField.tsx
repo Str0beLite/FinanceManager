@@ -30,5 +30,6 @@ export default function FormField({ label, error, hint, children }: FormFieldPro
   );
 }
 
+/** Text size is set globally in index.css: 16px on mobile so iOS never zooms. */
 export const inputClasses =
-  'w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-content placeholder:text-content-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30';
+  'w-full rounded-lg border border-border-subtle bg-surface px-3 min-h-11 sm:min-h-0 sm:py-2 text-content placeholder:text-content-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30';

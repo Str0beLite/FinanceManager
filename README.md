@@ -66,6 +66,23 @@ After that the app is live at `https://<your-username>.github.io/FinanceManager/
 The Vite `base` is set to `/FinanceManager/`. If you rename the repository, update it
 in `vite.config.ts` to match.
 
+## On a phone
+
+The layout is mobile-first and the phone build is the one that got tuned:
+
+- Navigation is a fixed bottom tab bar in thumb reach, with all six sections
+  visible at once. It becomes a header nav from the `sm` breakpoint up.
+- Each list screen has a floating action button for its primary action.
+- Tables re-lay-out as cards below `sm`, built from the same column definitions
+  rather than a second hand-written layout.
+- Dialogs are bottom sheets on a phone and centred dialogs on a desktop.
+- Inputs render at 16px on mobile, which is what stops iOS zooming the viewport
+  when you focus a field.
+- Safe-area insets are respected, so nothing hides under a notch or home
+  indicator, and every tap target is at least 40px tall.
+
+Add it to your home screen and it opens like an app.
+
 ## Backups
 
 Your data lives in this browser's `localStorage` under one key. Clearing site data

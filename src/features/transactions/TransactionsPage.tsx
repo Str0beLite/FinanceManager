@@ -6,6 +6,7 @@ import {
   CardHeader,
   EmptyState,
   EntityTable,
+  Fab,
   Modal,
   type Column,
 } from '@/components/ui';
@@ -79,7 +80,6 @@ export default function TransactionsPage() {
     {
       key: 'note',
       header: 'Note',
-      hideOnMobile: true,
       render: (t) => <span className="text-content-muted">{t.note || '—'}</span>,
     },
     {
@@ -96,6 +96,7 @@ export default function TransactionsPage() {
         <CardHeader
           title={`Expenses — ${formatMonthLabel(selectedMonth)}`}
           description={`${monthTransactions.length} logged, ${format(total)} total. Subscriptions are tracked separately.`}
+          hideActionOnMobile
           action={
             <Button variant="primary" onClick={openNew} disabled={state.categories.length === 0}>
               Add expense
@@ -107,6 +108,7 @@ export default function TransactionsPage() {
           items={monthTransactions}
           columns={columns}
           getKey={(t) => t.id}
+          titleKey="category"
           emptyState={
             <EmptyState
               icon="🧾"
@@ -154,6 +156,8 @@ export default function TransactionsPage() {
           — switch months from the header to see them.
         </p>
       )}
+
+      {state.categories.length > 0 && <Fab label="Add expense" onClick={openNew} />}
 
       <Modal
         open={isFormOpen}

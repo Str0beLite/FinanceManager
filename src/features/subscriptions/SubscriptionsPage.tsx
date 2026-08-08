@@ -6,6 +6,7 @@ import {
   CardHeader,
   EmptyState,
   EntityTable,
+  Fab,
   Modal,
   StatTile,
   type Column,
@@ -70,7 +71,6 @@ export default function SubscriptionsPage() {
     {
       key: 'category',
       header: 'Category',
-      hideOnMobile: true,
       render: (subscription) => {
         const category = categories.get(subscription.categoryId);
         return (
@@ -90,7 +90,6 @@ export default function SubscriptionsPage() {
     {
       key: 'cadence',
       header: 'Schedule',
-      hideOnMobile: true,
       render: (subscription) => (
         <span className="text-content-muted">
           {cadenceLabel(subscription.cadence)} on the {ordinal(subscription.billingDay)}
@@ -128,6 +127,7 @@ export default function SubscriptionsPage() {
         <CardHeader
           title="Subscriptions"
           description="Recurring charges. The full amount is committed on day one of each billing month, so nothing sneaks up on you later."
+          hideActionOnMobile
           action={
             <Button
               variant="primary"
@@ -195,6 +195,8 @@ export default function SubscriptionsPage() {
           )}
         />
       </Card>
+
+      {state.categories.length > 0 && <Fab label="Add subscription" onClick={openNew} />}
 
       <Modal
         open={isFormOpen}

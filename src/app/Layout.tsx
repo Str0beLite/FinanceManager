@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useMoney } from '@/hooks/useMoney';
 import { useAppState } from '@/hooks/useApp';
-import { NAV_ITEMS, type PageId } from './navigation';
+import BottomNav from './BottomNav';
+import { NAV_ITEMS, findNavItem, type PageId } from './navigation';
 
 interface LayoutProps {
   activePage: PageId;
@@ -15,18 +16,22 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="border-border-subtle bg-surface-raised/90 sticky top-0 z-40 border-b backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-2">
+      <header className="border-border-subtle bg-surface-raised/95 pt-safe sticky top-0 z-40 border-b backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
+          {/* On mobile the header names the current screen; the tab bar carries the brand. */}
+          <h1 className="text-content truncate text-base font-semibold sm:hidden">
+            {findNavItem(activePage).label}
+          </h1>
+          <div className="hidden items-center gap-2 sm:flex">
             <span aria-hidden className="text-xl">
               💰
             </span>
             <span className="text-content text-sm font-semibold">Finance Manager</span>
           </div>
 
-          <div className="text-right">
+          <div className="flex shrink-0 items-baseline gap-2 sm:block sm:text-right">
             <p className="text-content-muted text-[10px] font-medium tracking-wide uppercase">
-              Rollover pool
+              Pool
             </p>
             <p className="text-brand text-sm font-semibold tabular-nums">
               {format(rolloverPoolCents)}
@@ -36,7 +41,7 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
 
         <nav
           aria-label="Sections"
-          className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 pb-2"
+          className="mx-auto hidden max-w-6xl gap-1 px-2 pb-2 sm:flex"
         >
           {NAV_ITEMS.map((item) => {
             const isActive = item.id === activePage;
@@ -60,11 +65,15 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5">{children}</main>
+      <main className="pb-nav mx-auto w-full max-w-6xl flex-1 px-4 py-4 sm:pb-6">
+        {children}
+      </main>
 
-      <footer className="text-content-muted mx-auto w-full max-w-6xl px-4 py-6 text-center text-xs">
+      <footer className="text-content-muted mx-auto hidden w-full max-w-6xl px-4 py-6 text-center text-xs sm:block">
         Stored in this browser only — export a backup from Settings to keep it safe.
       </footer>
+
+      <BottomNav activePage={activePage} onNavigate={onNavigate} />
     </div>
   );
 }

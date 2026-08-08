@@ -26,11 +26,19 @@ export default function StatTile({
   action,
 }: StatTileProps) {
   return (
-    <div className="bg-surface-raised border-border-subtle rounded-card flex flex-col justify-between border p-4">
-      <p className="text-content-muted text-xs font-medium tracking-wide uppercase">{label}</p>
-      <p className={`mt-2 text-2xl font-semibold tabular-nums ${VALUE_TONES[tone]}`}>{value}</p>
-      {hint && <p className="text-content-muted mt-1 text-xs">{hint}</p>}
-      {action && <div className="mt-3">{action}</div>}
+    <div className="bg-surface-raised border-border-subtle rounded-card flex flex-col border p-3 sm:p-4">
+      <p className="text-content-muted text-[10px] font-medium tracking-wide uppercase sm:text-xs">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-xl font-semibold tabular-nums sm:mt-2 sm:text-2xl ${VALUE_TONES[tone]}`}
+      >
+        {value}
+      </p>
+      {/* The hint is supporting detail — on a phone the number has to win. */}
+      {hint && <p className="text-content-muted mt-1 hidden text-xs sm:block">{hint}</p>}
+      {/* mt-auto pins the action to the bottom when grid siblings stretch this tile. */}
+      {action && <div className="mt-auto pt-2 sm:pt-3">{action}</div>}
     </div>
   );
 }

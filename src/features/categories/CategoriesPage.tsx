@@ -6,6 +6,7 @@ import {
   CardHeader,
   EmptyState,
   EntityTable,
+  Fab,
   Modal,
   type Column,
 } from '@/components/ui';
@@ -87,7 +88,6 @@ export default function CategoriesPage() {
       key: 'budget',
       header: 'This month',
       align: 'right',
-      hideOnMobile: true,
       render: (category) => format(budgetByCategory.get(category.id) ?? 0),
     },
   ];
@@ -100,6 +100,7 @@ export default function CategoriesPage() {
         <CardHeader
           title="Categories"
           description="Fixed amounts come off the top. Percentages split what's left. Hard-set categories are protected from rollover cuts."
+          hideActionOnMobile
           action={
             <Button variant="primary" onClick={openNew}>
               Add category
@@ -175,6 +176,8 @@ export default function CategoriesPage() {
           )}
         />
       </Card>
+
+      {state.categories.length > 0 && <Fab label="Add category" onClick={openNew} />}
 
       <Modal
         open={isFormOpen}

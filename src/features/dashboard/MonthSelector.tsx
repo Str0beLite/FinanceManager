@@ -11,27 +11,28 @@ export default function MonthSelector({ monthKey, onSelect, isClosed }: MonthSel
   const isCurrentMonth = monthKey === monthKeyOf();
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="border-border-subtle bg-surface-raised flex items-center gap-1 rounded-lg border p-1">
-        <Button
-          size="sm"
-          variant="ghost"
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+      {/* Full width on a phone so the arrows sit at the screen edges, in thumb reach. */}
+      <div className="border-border-subtle bg-surface-raised flex w-full items-center justify-between gap-1 rounded-lg border p-1 sm:w-auto sm:justify-start">
+        <button
+          type="button"
           aria-label="Previous month"
           onClick={() => onSelect(prevMonthKey(monthKey))}
+          className="text-content-muted active:bg-surface-muted hover:text-content flex size-10 items-center justify-center rounded-md text-lg sm:size-8"
         >
           ‹
-        </Button>
-        <span className="text-content min-w-40 text-center text-sm font-semibold">
+        </button>
+        <span className="text-content text-center text-sm font-semibold sm:min-w-40">
           {formatMonthLabel(monthKey)}
         </span>
-        <Button
-          size="sm"
-          variant="ghost"
+        <button
+          type="button"
           aria-label="Next month"
           onClick={() => onSelect(nextMonthKey(monthKey))}
+          className="text-content-muted active:bg-surface-muted hover:text-content flex size-10 items-center justify-center rounded-md text-lg sm:size-8"
         >
           ›
-        </Button>
+        </button>
       </div>
 
       {isClosed && <Badge tone="neutral">🔒 Closed</Badge>}

@@ -11,9 +11,11 @@ const VARIANTS: Record<Variant, string> = {
   danger: 'bg-transparent text-danger border-danger/40 hover:bg-danger hover:text-white',
 };
 
+// Minimum heights keep every button a comfortable touch target on a phone and
+// tighten up from `sm`, where a pointer is doing the aiming.
 const SIZES: Record<Size, string> = {
-  sm: 'text-xs px-2.5 py-1.5 gap-1',
-  md: 'text-sm px-3.5 py-2 gap-1.5',
+  sm: 'text-xs px-3 min-h-10 sm:min-h-0 sm:px-2.5 sm:py-1.5 gap-1',
+  md: 'text-sm px-4 min-h-11 sm:min-h-0 sm:px-3.5 sm:py-2 gap-1.5',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

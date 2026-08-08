@@ -61,7 +61,8 @@ export default function CategoryCard({ category, onAddSpending }: CategoryCardPr
             <button
               type="button"
               onClick={() => onAddSpending(category.categoryId)}
-              className="text-brand hover:text-brand-strong font-medium"
+              aria-label={`Add spending to ${category.name}`}
+              className="text-brand active:bg-brand-soft hover:text-brand-strong -my-2 -mr-2 flex min-h-10 items-center rounded-lg px-3 font-medium sm:my-0 sm:mr-0 sm:min-h-0 sm:px-0"
             >
               + Add
             </button>

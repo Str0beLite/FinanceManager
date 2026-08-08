@@ -15,6 +15,8 @@ export default function IncomeCard({ monthKey, readOnly }: IncomeCardProps) {
   const { format } = useMoney();
   const [label, setLabel] = useState('');
   const [amountCents, setAmountCents] = useState(0);
+  // Extra income is occasional, so the form stays folded away until asked for.
+  const [isFormOpen, setFormOpen] = useState(false);
 
   const entries = useMemo(
     () =>
@@ -38,6 +40,7 @@ export default function IncomeCard({ monthKey, readOnly }: IncomeCardProps) {
     });
     setLabel('');
     setAmountCents(0);
+    setFormOpen(false);
   };
 
   return (
@@ -80,7 +83,13 @@ export default function IncomeCard({ monthKey, readOnly }: IncomeCardProps) {
         </ul>
       )}
 
-      {!readOnly && (
+      {!readOnly && !isFormOpen && (
+        <Button onClick={() => setFormOpen(true)} className="w-full sm:w-auto">
+          + Add extra income
+        </Button>
+      )}
+
+      {!readOnly && isFormOpen && (
         <form
           className="flex flex-col gap-3"
           onSubmit={(event) => {
@@ -105,9 +114,19 @@ export default function IncomeCard({ monthKey, readOnly }: IncomeCardProps) {
               <MoneyInput id={id} valueCents={amountCents} onChange={setAmountCents} />
             )}
           </FormField>
-          <Button type="submit" disabled={amountCents <= 0}>
-            Add income
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setFormOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={amountCents <= 0}
+              className="flex-1 sm:flex-none"
+            >
+              Add income
+            </Button>
+          </div>
         </form>
       )}
     </Card>

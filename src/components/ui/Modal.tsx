@@ -38,14 +38,19 @@ export default function Modal({ open, title, onClose, children, footer }: ModalP
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="bg-surface-raised border-border-subtle max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border p-5 shadow-xl sm:rounded-2xl">
+      {/* A bottom sheet on phones, a centred dialog from `sm` up. */}
+      <div className="bg-surface-raised border-border-subtle pb-safe max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border p-4 shadow-xl sm:rounded-2xl sm:p-5 sm:pb-5">
+        <div
+          aria-hidden
+          className="bg-border-subtle mx-auto mb-3 h-1 w-10 rounded-full sm:hidden"
+        />
         <header className="mb-4 flex items-center justify-between gap-4">
           <h2 className="text-content text-base font-semibold">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-content-muted hover:text-content rounded-lg px-2 py-1 text-lg leading-none"
+            className="text-content-muted hover:text-content -mr-2 flex size-10 items-center justify-center rounded-lg text-xl leading-none sm:size-auto sm:px-2 sm:py-1 sm:text-lg"
           >
             ×
           </button>

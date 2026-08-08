@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AllocationDonut from '@/components/charts/AllocationDonut';
-import { Badge, Button, Card, CardHeader, EmptyState, Modal } from '@/components/ui';
+import { Badge, Button, Card, CardHeader, EmptyState, Fab, Modal } from '@/components/ui';
 import { useApp } from '@/hooks/useApp';
 import { useAllocationStatus } from '@/hooks/useCategories';
 import { useCurrentMonth } from '@/hooks/useMonth';
@@ -32,7 +32,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     selectMonth,
   } = useCurrentMonth();
 
-  const [quickAddCategoryId, setQuickAddCategoryId] = useState<string | null>(null);
+  // `null` means closed; an object opens the sheet, optionally pre-picking a category.
+  const [quickAdd, setQuickAdd] = useState<{ categoryId?: string } | null>(null);
 
   const hasCategories = state.categories.some((category) => !category.archived);
 
@@ -101,7 +102,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       {hasCategories ? (
         <>
-          <Card>
+          {/* The donut restates what the category cards below already show, so on a
+              phone it is pure scroll cost — desktop has the room to spare. */}
+          <Card className="hidden sm:block">
             <CardHeader
               title="Where the money goes"
               description={`${computation.categories.length} categories this month.`}
@@ -146,7 +149,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <CategoryCard
                 key={category.categoryId}
                 category={category}
-                onAddSpending={isClosed ? undefined : setQuickAddCategoryId}
+                onAddSpending={
+                  isClosed ? undefined : (categoryId) => setQuickAdd({ categoryId })
+                }
               />
             ))}
           </div>
@@ -169,19 +174,19 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <IncomeCard monthKey={monthKey} readOnly={isClosed} />
       </div>
 
-      <Modal
-        open={quickAddCategoryId !== null}
-        title="Add expense"
-        onClose={() => setQuickAddCategoryId(null)}
-      >
+      {hasCategories && !isClosed && (
+        <Fab label="Add expense" onClick={() => setQuickAdd({})} />
+      )}
+
+      <Modal open={quickAdd !== null} title="Add expense" onClose={() => setQuickAdd(null)}>
         <TransactionForm
-          defaultCategoryId={quickAddCategoryId ?? undefined}
+          defaultCategoryId={quickAdd?.categoryId}
           defaultDate={`${monthKey}-01`}
           onSubmit={(draft) => {
             dispatch({ type: 'transaction/add', draft });
-            setQuickAddCategoryId(null);
+            setQuickAdd(null);
           }}
-          onCancel={() => setQuickAddCategoryId(null)}
+          onCancel={() => setQuickAdd(null)}
         />
       </Modal>
     </div>
