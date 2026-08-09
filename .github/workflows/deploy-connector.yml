@@ -1,0 +1,200 @@
+name: Deploy connector
+
+# The Plaid connector in server/ is a Cloudflare Worker, not part of the Pages
+# site, so it deploys on its own. Everything it needs — the KV namespace, the
+# secrets, the allowed origin — is set up here, which means nobody has to
+# install Wrangler to run this app.
+#
+# It is entirely optional. A repository with no Cloudflare secrets set skips the
+# deploy and stays green: bank syncing is a feature you opt into.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-connector.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Two deploys of the same Worker must not race.
+concurrency:
+  group: connector
+  cancel-in-progress: false
+
+jobs:
+  # Runs for everyone, secrets or not, so server/ is never the one directory
+  # nothing checks.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+        working-directory: server
+      - run: npm run typecheck
+        working-directory: server
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is bank syncing set up?
+        id: setup
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
+          PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
+          APP_TOKEN: ${{ secrets.APP_TOKEN }}
+        run: |
+          set -euo pipefail
+          required=(CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID PLAID_CLIENT_ID PLAID_SECRET APP_TOKEN)
+          missing=()
+          for name in "${required[@]}"; do
+            [ -n "${!name:-}" ] || missing+=("$name")
+          done
+
+          if [ "${#missing[@]}" -eq "${#required[@]}" ]; then
+            # Nothing configured at all: this repo doesn't use bank syncing.
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No connector secrets are set, so there is nothing to deploy. Skipping."
+            exit 0
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            # Half-configured is a mistake worth shouting about — a Worker
+            # missing one of these fails at runtime, not at deploy.
+            echo "::error::Connector is partly configured. Missing repository secrets: ${missing[*]}"
+            exit 1
+          fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Work out the origin and Plaid environment
+        id: config
+        if: steps.setup.outputs.ready == 'true'
+        env:
+          # Repository *variables*, not secrets — neither value is sensitive.
+          PAGES_ORIGIN: ${{ vars.PAGES_ORIGIN }}
+          PLAID_ENV_VAR: ${{ vars.PLAID_ENV }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+
+          # The Worker's CORS header must match the app's origin exactly. Default
+          # to the Pages origin, lowercased, because that is what a browser sends.
+          origin="${PAGES_ORIGIN:-}"
+          if [ -z "$origin" ]; then
+            origin="https://$(echo "$OWNER" | tr '[:upper:]' '[:lower:]').github.io"
+          fi
+          origin="${origin%/}"
+
+          plaid_env="${PLAID_ENV_VAR:-sandbox}"
+          if [ "$plaid_env" != "sandbox" ] && [ "$plaid_env" != "production" ]; then
+            echo "::error::PLAID_ENV must be 'sandbox' or 'production', not '$plaid_env'."
+            exit 1
+          fi
+
+          echo "origin=$origin" >> "$GITHUB_OUTPUT"
+          echo "plaid_env=$plaid_env" >> "$GITHUB_OUTPUT"
+          echo "::notice::Allowing origin $origin against Plaid $plaid_env."
+
+      - name: Find or create the KV namespace
+        id: kv
+        if: steps.setup.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          # Same title Wrangler would give it, so a namespace created by hand
+          # earlier is adopted rather than duplicated.
+          title="finance-manager-connector-BANK_KV"
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          if ! listing=$(curl -sS --fail-with-body -H "$auth" "$api?per_page=100"); then
+            echo "::error::Could not list KV namespaces. Check CLOUDFLARE_ACCOUNT_ID, and that the API token has Workers KV Storage:Edit."
+            exit 1
+          fi
+
+          id=$(printf '%s' "$listing" | jq -r --arg t "$title" 'first(.result[]? | select(.title == $t) | .id) // empty')
+
+          if [ -z "$id" ]; then
+            created=$(curl -sS --fail-with-body -X POST -H "$auth" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -nc --arg t "$title" '{title: $t}')" "$api")
+            id=$(printf '%s' "$created" | jq -r '.result.id // empty')
+            [ -n "$id" ] || { echo "::error::Creating the KV namespace failed: $created"; exit 1; }
+            echo "::notice::Created KV namespace $title."
+          fi
+
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Point wrangler.toml at that namespace
+        if: steps.setup.outputs.ready == 'true'
+        env:
+          KV_ID: ${{ steps.kv.outputs.id }}
+        run: |
+          set -euo pipefail
+          # Edited in the runner only; the committed file keeps its placeholder,
+          # since the namespace id belongs to whoever deployed it.
+          sed -i "s|^id = \".*\"|id = \"$KV_ID\"|" server/wrangler.toml
+          grep -q "^id = \"$KV_ID\"$" server/wrangler.toml || {
+            echo "::error::Could not write the KV id into server/wrangler.toml."
+            exit 1
+          }
+
+      - name: Deploy
+        id: deploy
+        if: steps.setup.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: server
+          # Uploaded as Worker secrets before the deploy, so they never appear
+          # in wrangler.toml or in the log.
+          secrets: |
+            PLAID_CLIENT_ID
+            PLAID_SECRET
+            APP_TOKEN
+          vars: |
+            ALLOWED_ORIGIN
+            PLAID_ENV
+        env:
+          PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
+          PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
+          APP_TOKEN: ${{ secrets.APP_TOKEN }}
+          ALLOWED_ORIGIN: ${{ steps.config.outputs.origin }}
+          PLAID_ENV: ${{ steps.config.outputs.plaid_env }}
+
+      - name: What to paste into the app
+        if: steps.setup.outputs.ready == 'true'
+        env:
+          URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          set -euo pipefail
+          url="${URL:-see the Deploy step output above}"
+          {
+            echo "### Connector deployed"
+            echo
+            echo "Open the app, go to **Settings → Bank syncing**, and enter:"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Connector URL | \`$url\` |"
+            echo "| Connector token | the \`APP_TOKEN\` repository secret |"
+            echo
+            echo "Then **Save and check**, and **Connect a bank**."
+          } >> "$GITHUB_STEP_SUMMARY"

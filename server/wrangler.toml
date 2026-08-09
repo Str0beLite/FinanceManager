@@ -2,6 +2,10 @@ name = "finance-manager-connector"
 main = "src/index.ts"
 compatibility_date = "2026-01-01"
 
+# These are the defaults for a hand-rolled `wrangler deploy`. The GitHub Actions
+# workflow (.github/workflows/deploy-connector.yml) fills all three in itself, so
+# if you deploy that way there is nothing to edit here.
+
 # Holds one Plaid access token per linked bank. Create it once with:
 #   wrangler kv namespace create BANK_KV
 # then paste the id it prints in below.
