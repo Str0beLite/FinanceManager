@@ -10,6 +10,7 @@ import {
   Modal,
   type Column,
 } from '@/components/ui';
+import { ReviewInbox } from '@/features/bank';
 import { useApp } from '@/hooks/useApp';
 import { useCategoryLookup } from '@/hooks/useCategories';
 import { useMoney } from '@/hooks/useMoney';
@@ -92,6 +93,10 @@ export default function TransactionsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Above the ledger, because it is the thing that needs a decision. It
+          renders nothing once the queue is empty. */}
+      <ReviewInbox />
+
       <Card>
         <CardHeader
           title={`Expenses — ${formatMonthLabel(selectedMonth)}`}

@@ -1,3 +1,4 @@
+import type { BankState } from './bank';
 import type { Category } from './category';
 import type { IncomeEntry } from './income';
 import type { MonthRecord } from './month';
@@ -17,4 +18,6 @@ export interface AppState {
   /** Savings accumulated from months that came in under budget. */
   readonly rolloverPoolCents: number;
   readonly settings: Settings;
+  /** Bank syncing. Empty and inert until the user sets up a connector. */
+  readonly bank: BankState;
 }

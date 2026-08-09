@@ -1,4 +1,5 @@
 import type { AppState } from '@/types';
+import { bankReducer, type BankAction } from './slices/bank';
 import { categoriesReducer, type CategoryAction } from './slices/categories';
 import { dataReducer, type DataAction } from './slices/data';
 import { incomesReducer, type IncomeAction } from './slices/incomes';
@@ -14,6 +15,7 @@ export type AppAction =
   | IncomeAction
   | MonthAction
   | SettingsAction
+  | BankAction
   | DataAction;
 
 /**
@@ -37,6 +39,8 @@ export function rootReducer(state: AppState, action: AppAction): AppState {
       return monthsReducer(state, action as MonthAction);
     case 'settings':
       return settingsReducer(state, action as SettingsAction);
+    case 'bank':
+      return bankReducer(state, action as BankAction);
     case 'data':
       return dataReducer(state, action as DataAction);
     default:

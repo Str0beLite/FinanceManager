@@ -43,6 +43,26 @@ describe('export / import round trip', () => {
     expect(result.state).toEqual(original);
   });
 
+  it('leaves the connector token out of the file', () => {
+    // A backup gets emailed around and dropped in cloud storage; that token is
+    // a bearer credential for bank data and must not travel with it.
+    const connected = {
+      ...createEmptyState(),
+      bank: {
+        ...createEmptyState().bank,
+        connectorUrl: 'https://connector.example.workers.dev',
+        connectorToken: 'super-secret',
+      },
+    };
+
+    const json = serializeState(connected);
+    expect(json).not.toContain('super-secret');
+
+    const restored = deserializeState(json).state;
+    expect(restored?.bank.connectorUrl).toBe('https://connector.example.workers.dev');
+    expect(restored?.bank.connectorToken).toBe('');
+  });
+
   it('reports a helpful error for a file that is not a backup', () => {
     expect(deserializeState('{"hello":"world"}')).toMatchObject({ ok: false });
     expect(deserializeState('not json at all').error).toMatch(/valid JSON/);

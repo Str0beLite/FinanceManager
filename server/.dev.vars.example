@@ -1,0 +1,6 @@
+# Copy to `.dev.vars` for `wrangler dev`. That file is gitignored — the real
+# values must never be committed. In production these are Worker secrets set
+# with `wrangler secret put` instead.
+PLAID_CLIENT_ID = "your-plaid-client-id"
+PLAID_SECRET = "your-plaid-sandbox-secret"
+APP_TOKEN = "generate-with-openssl-rand-hex-32"

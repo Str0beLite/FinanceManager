@@ -1,5 +1,6 @@
 import { Card, CardHeader, FormField, MoneyInput, Select } from '@/components/ui';
 import { CURRENCIES } from '@/config/currency';
+import { BankSettings } from '@/features/bank';
 import { useApp } from '@/hooks/useApp';
 import type { Settings, ThemePreference } from '@/types';
 import DataTransfer from './DataTransfer';
@@ -64,6 +65,8 @@ export default function SettingsPage() {
           )}
         </FormField>
       </Card>
+
+      <BankSettings />
 
       <DataTransfer />
 

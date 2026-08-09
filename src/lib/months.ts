@@ -48,6 +48,15 @@ export function isMonthClosed(state: AppState, key: string): boolean {
   return state.months[key]?.closed ?? false;
 }
 
+/** Every closed month, as a set — what bank syncing checks before filing a charge. */
+export function closedMonthKeys(state: AppState): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const [key, record] of Object.entries(state.months)) {
+    if (record.closed) keys.add(key);
+  }
+  return keys;
+}
+
 /**
  * Months settle in order, so exactly one is ever up for closing: the oldest
  * that is still open. Closing out of order would stack settlements on top of a
