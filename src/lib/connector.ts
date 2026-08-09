@@ -71,8 +71,15 @@ export function checkConnector(config: ConnectorConfig) {
   return call<HealthResponse>(config, '/health', { method: 'GET' });
 }
 
-export function createLinkToken(config: ConnectorConfig) {
-  return call<LinkTokenResponse>(config, '/link/token', { method: 'POST' });
+/**
+ * `redirectUri` is what makes OAuth banks — most large ones — work at all.
+ * The connector checks it against its allowed origin before passing it on.
+ */
+export function createLinkToken(config: ConnectorConfig, redirectUri?: string) {
+  return call<LinkTokenResponse>(config, '/link/token', {
+    method: 'POST',
+    body: JSON.stringify({ redirectUri }),
+  });
 }
 
 export function exchangePublicToken(config: ConnectorConfig, publicToken: string) {
@@ -116,6 +123,20 @@ export async function syncAll(
       body: JSON.stringify({ itemId, cursor: nextCursor || null }),
     });
     if (!result.ok) return result;
+
+    // The connector is deployed separately, so it can be older than this app.
+    // Without this, a shape it no longer matches throws mid-loop and surfaces
+    // as nothing at all.
+    if (
+      !Array.isArray(result.data.added) ||
+      !Array.isArray(result.data.modified) ||
+      !Array.isArray(result.data.removed)
+    ) {
+      return {
+        ok: false,
+        error: 'The connector sent a reply this app did not understand. It may need redeploying.',
+      };
+    }
 
     incoming.push(...result.data.added, ...result.data.modified);
     removed.push(...result.data.removed);

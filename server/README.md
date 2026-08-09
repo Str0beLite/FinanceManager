@@ -72,6 +72,28 @@ green, because bank syncing is opt-in. A repository with *some* of them fails
 loudly, because a Worker missing one fails at request time instead, which is a
 much worse place to find out.
 
+### One more thing, in the Plaid dashboard
+
+Most large banks no longer accept a username and password inside Plaid Link.
+They send you to their own site to sign in and then send you back — and Plaid
+will only send you back to an address you have registered.
+
+Add your app's URL under **Developers → API → Allowed redirect URIs**:
+
+| App | URI to register |
+| --- | --- |
+| Production | `https://<your-username>.github.io/FinanceManager/` |
+| Beta channel | `https://<your-username>.github.io/FinanceManager/beta/` |
+| Local dev | `http://localhost:5173/` |
+
+The trailing slash matters, and each environment is registered separately —
+sandbox and production don't share the list.
+
+Without this, picking a bank that uses OAuth — Chase, Wells Fargo, U.S. Bank,
+Capital One and most other large ones, in sandbox as well as production — drops
+you back on the login screen with no error, because there is nowhere legitimate
+for the bank to return you to.
+
 ### By hand
 
 ```bash

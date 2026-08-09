@@ -20,6 +20,8 @@ interface PlaidHandler {
 
 interface PlaidLinkOptions {
   token: string;
+  /** Only ever set when resuming after an OAuth bank sent the browser back. */
+  receivedRedirectUri?: string;
   onSuccess(publicToken: string): void;
   onExit(error: { display_message?: string; error_message?: string } | null): void;
 }
@@ -62,8 +64,19 @@ function loadPlaid(): Promise<PlaidGlobal> {
   return pending;
 }
 
+/**
+ * Where Plaid should send the browser back to after an OAuth bank.
+ *
+ * Query and hash are dropped, because Plaid matches this against the dashboard
+ * list exactly, and because the address it returns to carries its own query.
+ */
+export function linkRedirectUri(): string {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
 export interface OpenLinkOptions {
   readonly linkToken: string;
+  readonly receivedRedirectUri?: string;
   readonly onSuccess: (publicToken: string) => void;
   readonly onExit: (error: string | null) => void;
 }
@@ -74,6 +87,7 @@ export interface OpenLinkOptions {
  */
 export async function openPlaidLink({
   linkToken,
+  receivedRedirectUri,
   onSuccess,
   onExit,
 }: OpenLinkOptions): Promise<void> {
@@ -81,6 +95,9 @@ export async function openPlaidLink({
 
   const handler = plaid.create({
     token: linkToken,
+    // Passing this on a first open makes Link fail looking for an OAuth state
+    // that was never issued, so the key is absent rather than undefined.
+    ...(receivedRedirectUri ? { receivedRedirectUri } : {}),
     onSuccess: (publicToken) => {
       onSuccess(publicToken);
       handler.destroy();

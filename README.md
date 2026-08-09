@@ -185,6 +185,11 @@ prefer it. Repositories with no Cloudflare secrets set skip that workflow and st
 Sandbox keys are free and issued immediately, which is enough to try the whole thing
 end to end against Plaid's fake bank.
 
+**Register the app's URL as a redirect URI** in the Plaid dashboard while you're there.
+Large banks sign you in on their own site and then send you back, and Plaid only returns
+you to an address you've listed. Skip it and those banks silently loop on their login
+screen — `server/README.md` has the exact values.
+
 ### How a charge becomes an expense
 
 1. A sync runs when the app comes to the foreground, at most every 15 minutes, plus a
