@@ -16,7 +16,40 @@
     <title>Finance Manager</title>
   </head>
   <body class="h-full">
-    <div id="root" class="h-full"></div>
+    <!--
+      The fallback inside #root is replaced the moment React mounts, so it is
+      only ever seen when the app bundle failed to load. Without it that failure
+      is a silent white page. Styles are inline because the CSS bundle would not
+      have loaded either.
+    -->
+    <div id="root" class="h-full">
+      <div
+        style="
+          max-width: 34rem;
+          margin: 0 auto;
+          padding: 3rem 1.25rem;
+          font-family: system-ui, -apple-system, sans-serif;
+          color: #21252e;
+          line-height: 1.5;
+        "
+      >
+        <h1 style="font-size: 1.125rem; margin: 0 0 0.5rem">Finance Manager didn&rsquo;t load</h1>
+        <p style="margin: 0 0 1rem; color: #5b6070">
+          The page loaded but its application code did not, so there is nothing to show.
+        </p>
+        <p style="margin: 0; color: #5b6070; font-size: 0.875rem">
+          If you are hosting this on GitHub Pages, check
+          <strong>Settings &rarr; Pages &rarr; Build and deployment</strong> is set to
+          <strong>GitHub Actions</strong>. Deploying from a branch publishes this source file
+          instead of the built app, which is exactly what produces this message.
+        </p>
+      </div>
+    </div>
+    <noscript>
+      <p style="padding: 1.25rem; font-family: system-ui, sans-serif">
+        Finance Manager needs JavaScript enabled to run.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

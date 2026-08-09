@@ -60,8 +60,29 @@ Other scripts:
 
 `.github/workflows/deploy.yml` builds and publishes on every push to `main`.
 
-One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-After that the app is live at `https://<your-username>.github.io/FinanceManager/`.
+**Required one-time setup: Settings → Pages → Build and deployment → Source must be
+"GitHub Actions", not "Deploy from a branch".** This is not optional, and getting it
+wrong fails in a confusing way rather than an obvious one.
+
+Branch deployment publishes the *repository* as-is. The `index.html` at the repo root
+is Vite's development entry — it points at `/src/main.tsx`, which is TypeScript that no
+browser can execute, at a path that doesn't exist on the deployed site. The result is a
+page that loads and renders nothing at all.
+
+Worse, the two can run at once: if Pages is set to a branch while this workflow is also
+enabled, both publish on every push and whichever finishes last wins. A green checkmark
+on the deploy workflow is therefore not proof the built app is live.
+
+Two guards exist for this:
+
+- The workflow verifies `dist/` before uploading — that `index.html` references the
+  bundle rather than the TS source, that assets sit under the `/FinanceManager/` base
+  path, and that every referenced file is actually in the artifact.
+- `index.html` carries fallback content inside `#root`, which React replaces on mount.
+  If the bundle never loads, the page explains why instead of showing a white screen.
+
+Once the source is set correctly the app is live at
+`https://<your-username>.github.io/FinanceManager/`.
 
 The Vite `base` is set to `/FinanceManager/`. If you rename the repository, update it
 in `vite.config.ts` to match — including the PWA manifest's `start_url` and `scope`
