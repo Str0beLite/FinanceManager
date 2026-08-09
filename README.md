@@ -201,6 +201,10 @@ screen — `server/README.md` has the exact values.
    category files it, and offers to remember the merchant so the next one files itself.
    The rule text is editable, because `SQ *BLUE BOTTLE 4417` is not something worth
    matching on twice.
+4. One charge that was really two things — half the weekly shop, half a birthday present
+   — can be **split across categories**. It opens already halved, so the common case is
+   picking two categories and filing. The parts have to add up to the charge exactly
+   before it will file; a split that is a cent short is a month that is a cent wrong.
 
 Some deliberate rules, all covered by tests in `tests/bank.test.ts`:
 
@@ -209,7 +213,8 @@ Some deliberate rules, all covered by tests in `tests/bank.test.ts`:
   and reported, not silently dropped.
 - **A pending charge that posts is updated, not duplicated.** The bank issues a new id
   when it finalises the amount, so the old one is matched and amended in place — the
-  category you already picked survives.
+  category you already picked survives. A charge that was split keeps its shape: the new
+  amount is shared out in the proportions you set, still adding up to the cent.
 - **A charge dated in a closed month goes to the inbox**, whatever the rules say. Closed
   months render from a frozen snapshot, so filing into one would count for nothing and
   appear nowhere.

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addMonths,
   daysInMonth,
+  defaultDateInMonth,
   isMonthKey,
   monthKeyOf,
   monthsBetween,
@@ -56,5 +57,18 @@ describe('ordinal', () => {
       ordinal(21),
       ordinal(22),
     ]);
+  });
+});
+
+describe('defaultDateInMonth', () => {
+  const today = new Date(2026, 7, 12);
+
+  it('offers today when today is in the month being viewed', () => {
+    expect(defaultDateInMonth('2026-08', today)).toBe('2026-08-12');
+  });
+
+  it('falls back to the first, because today is not in that month to offer', () => {
+    expect(defaultDateInMonth('2026-07', today)).toBe('2026-07-01');
+    expect(defaultDateInMonth('2026-09', today)).toBe('2026-09-01');
   });
 });

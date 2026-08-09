@@ -11,7 +11,9 @@ export default function MonthSelector({ monthKey, onSelect, isClosed }: MonthSel
   const isCurrentMonth = monthKey === monthKeyOf();
 
   return (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+    // Full width on a phone, or the box below shrinks to its contents and the
+    // month label lands wherever that leaves it rather than mid-screen.
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
       {/* Full width on a phone so the arrows sit at the screen edges, in thumb reach. */}
       <div className="border-border-subtle bg-surface-raised flex w-full items-center justify-between gap-1 rounded-lg border p-1 sm:w-auto sm:justify-start">
         <button

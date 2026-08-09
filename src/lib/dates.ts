@@ -28,6 +28,17 @@ export function todayIsoDate(date: Date = new Date()): string {
   return `${monthKeyOf(date)}-${day}`;
 }
 
+/**
+ * The date a new expense in `key` should open on.
+ *
+ * Today, whenever today is inside the month being viewed — which is nearly
+ * always, and is nearly always the date meant. Browsing another month falls
+ * back to its first day, because today is not in it to offer.
+ */
+export function defaultDateInMonth(key: string, date: Date = new Date()): string {
+  return key === monthKeyOf(date) ? todayIsoDate(date) : `${key}-01`;
+}
+
 function parseMonthKey(key: string): { year: number; month: number } {
   const [year, month] = key.split('-').map(Number);
   return { year, month };

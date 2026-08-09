@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSwipe, stepIndex } from '@/lib/gestures';
+import { dampDrag, resolveAxis, resolveSwipe, stepIndex } from '@/lib/gestures';
 
 const THRESHOLD = 60;
 
@@ -42,5 +42,39 @@ describe('stepIndex', () => {
     // Settings is reachable but not a tab, so a swipe there does nothing.
     expect(stepIndex(-1, 1, TABS)).toBeNull();
     expect(stepIndex(-1, -1, TABS)).toBeNull();
+  });
+});
+
+describe('resolveAxis', () => {
+  it('holds off until the drag is bigger than a wobble', () => {
+    expect(resolveAxis(0, 0)).toBeNull();
+    expect(resolveAxis(11, -11)).toBeNull();
+  });
+
+  it('commits to whichever axis has moved further', () => {
+    expect(resolveAxis(40, 10)).toBe('horizontal');
+    expect(resolveAxis(-40, 10)).toBe('horizontal');
+    expect(resolveAxis(10, 40)).toBe('vertical');
+  });
+
+  it('calls a diagonal a scroll, because a page that scrolls is the common case', () => {
+    expect(resolveAxis(30, 30)).toBe('vertical');
+  });
+});
+
+describe('dampDrag', () => {
+  it('tracks the finger exactly when there is a tab that way', () => {
+    expect(dampDrag(87, false)).toBe(87);
+    expect(dampDrag(-87, false)).toBe(-87);
+  });
+
+  it('gives a little at a wall, in the direction pushed', () => {
+    expect(dampDrag(80, true)).toBe(20);
+    expect(dampDrag(-80, true)).toBe(-20);
+  });
+
+  it('stops giving, so the wall stays a wall however hard it is pushed', () => {
+    expect(dampDrag(4000, true)).toBe(64);
+    expect(dampDrag(-4000, true)).toBe(-64);
   });
 });

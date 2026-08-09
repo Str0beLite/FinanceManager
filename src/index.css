@@ -24,6 +24,36 @@
   --color-danger-soft: oklch(96% 0.03 25);
 
   --radius-card: 0.875rem;
+
+  /*
+   * Arriving at a tab. Short, and eased out hard, so the page has clearly come
+   * from somewhere without making anyone wait to read it. The fade does most of
+   * the work — a full-width slide on a screen this size reads as a lurch.
+   */
+  --animate-page-in-right: page-in-right 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-page-in-left: page-in-left 240ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  @keyframes page-in-right {
+    from {
+      transform: translate3d(6%, 0, 0);
+      opacity: 0.35;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes page-in-left {
+    from {
+      transform: translate3d(-6%, 0, 0);
+      opacity: 0.35;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
 }
 
 @layer theme {
@@ -60,13 +90,30 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/*
+ * The tab bar's own bottom padding.
+ *
+ * The full inset — 34px on a notched iPhone — is reserved for the home
+ * indicator, but the indicator itself only occupies about 21px of it. Padding
+ * by the whole thing leaves the icons visibly floating above the edge in the
+ * installed app, where there is no browser toolbar underneath to explain it.
+ * Clearing the indicator and no more puts them back on the edge. In a browser
+ * the inset is 0 and this is 0, which is why the gap was only ever visible in
+ * the PWA.
+ */
+@utility pb-nav-safe {
+  padding-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - 0.75rem));
+}
+
 @utility mb-safe {
   margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /** Clears the fixed bottom tab bar on mobile so content is never trapped under it. */
 @utility pb-nav {
-  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(
+    4.5rem + max(0px, calc(env(safe-area-inset-bottom, 0px) - 0.75rem))
+  );
 }
 
 @layer base {
@@ -109,5 +156,17 @@
 
   input[type='number'] {
     -moz-appearance: textfield;
+  }
+
+  /*
+   * Motion that exists to show where a screen came from is exactly the motion
+   * this setting is asking us to drop. The spinner stays — it reports that
+   * something is still happening, which is information, not decoration.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-page-in-right,
+    .animate-page-in-left {
+      animation: none;
+    }
   }
 }

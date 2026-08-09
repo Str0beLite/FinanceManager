@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { classifyIncoming, shouldAutoSync } from '@/lib/bank';
+import { classifyIncoming, shouldAutoSync, type SplitPart } from '@/lib/bank';
 import { syncAll, type ConnectorConfig } from '@/lib/connector';
 import { closedMonthKeys } from '@/lib/months';
 import type { AppState } from '@/types';
@@ -162,6 +162,12 @@ export function useInbox() {
     [dispatch],
   );
 
+  const split = useCallback(
+    (importId: string, parts: readonly SplitPart[]) =>
+      dispatch({ type: 'bank/split', importId, parts }),
+    [dispatch],
+  );
+
   const dismiss = useCallback(
     (importId: string) => dispatch({ type: 'bank/dismiss', importId }),
     [dispatch],
@@ -173,5 +179,5 @@ export function useInbox() {
     [inbox],
   );
 
-  return { rows, approve, dismiss };
+  return { rows, approve, split, dismiss };
 }

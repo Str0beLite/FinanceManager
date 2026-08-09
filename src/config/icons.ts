@@ -8,13 +8,13 @@ import {
   faCheck,
   faChevronLeft,
   faChevronRight,
+  faGaugeHigh,
   faGear,
   faInbox,
   faLock,
   faPlus,
   faReceipt,
   faRotate,
-  faSliders,
   faTableCellsLarge,
   faWallet,
   faXmark,
@@ -30,10 +30,11 @@ import {
  * the glyphs actually listed below.
  */
 export const ICONS = {
-  // Navigation
-  budget: faChartPie,
+  // Navigation. The dashboard is a reading of where the month stands, so it
+  // gets the dial; the pie belongs to Plan, which is where the slices are set.
+  budget: faGaugeHigh,
   spend: faReceipt,
-  plan: faSliders,
+  plan: faChartPie,
   history: faCalendarDays,
   settings: faGear,
 
