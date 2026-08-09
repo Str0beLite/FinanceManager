@@ -50,11 +50,11 @@ export default function TransactionsPage() {
     setFormOpen(true);
   };
 
-  const handleSubmit = (draft: TransactionDraft) => {
+  const handleSubmit = (drafts: readonly TransactionDraft[]) => {
     if (editing) {
-      dispatch({ type: 'transaction/update', id: editing.id, changes: draft });
+      dispatch({ type: 'transaction/update', id: editing.id, changes: drafts[0] });
     } else {
-      dispatch({ type: 'transaction/add', draft });
+      dispatch({ type: 'transaction/addMany', drafts });
     }
     setFormOpen(false);
     setEditing(null);
@@ -86,7 +86,15 @@ export default function TransactionsPage() {
     {
       key: 'note',
       header: 'Note',
-      render: (t) => <span className="text-content-muted">{t.note || '—'}</span>,
+      // The badge is the only thing telling two shares of one purchase apart
+      // from an expense entered twice by mistake. They behave identically
+      // otherwise — each is edited and deleted on its own.
+      render: (t) => (
+        <span className="text-content-muted flex items-center gap-1.5">
+          <span className="truncate">{t.note || '—'}</span>
+          {t.split && <Badge>Split</Badge>}
+        </span>
+      ),
     },
     {
       key: 'amount',

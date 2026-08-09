@@ -12,10 +12,13 @@ import {
 import { useBankConfig, useInbox } from '@/hooks/useBank';
 import { useActiveCategories } from '@/hooks/useCategories';
 import { useMoney } from '@/hooks/useMoney';
+import { useSplit } from '@/hooks/useSplit';
 import { normalizeMerchant, type SplitPart } from '@/lib/bank';
 import { formatDayLabel, formatMonthLabel, monthKeyOfIsoDate } from '@/lib/dates';
 import type { Category, PendingImport } from '@/types';
-import SplitEditor from './SplitEditor';
+// Reached by path rather than through the feature's barrel: the expenses page
+// imports this inbox, so going back through that barrel would be a cycle.
+import SplitEditor from '@/features/transactions/SplitEditor';
 
 /**
  * Charges the bank sent that nothing knew what to do with.
@@ -72,6 +75,7 @@ function InboxRow({ row, categories, onApprove, onSplit, onDismiss }: InboxRowPr
   const [categoryId, setCategoryId] = useState('');
   const [remember, setRemember] = useState(true);
   const [splitting, setSplitting] = useState(false);
+  const split = useSplit(row.amountCents);
   // Statement lines carry store numbers and city codes, so the rule text is
   // editable — "sq *blue bottle 4417" is not something to match on twice.
   const [match, setMatch] = useState(() => normalizeMerchant(row.merchant));
@@ -109,12 +113,23 @@ function InboxRow({ row, categories, onApprove, onSplit, onDismiss }: InboxRowPr
       </div>
 
       {splitting ? (
-        <SplitEditor
-          totalCents={row.amountCents}
-          categories={categories}
-          onFile={(parts) => onSplit(row.id, parts)}
-          onCancel={() => setSplitting(false)}
-        />
+        <>
+          <SplitEditor split={split} totalCents={row.amountCents} categories={categories} />
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setSplitting(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={split.problem !== null}
+              onClick={() => onSplit(row.id, split.toParts())}
+            >
+              <Icon name="approve" />
+              File split
+            </Button>
+          </div>
+        </>
       ) : (
         <>
           <div className="flex items-center gap-2">

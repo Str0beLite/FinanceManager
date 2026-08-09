@@ -194,8 +194,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <TransactionForm
           defaultCategoryId={quickAdd?.categoryId}
           defaultDate={defaultDateInMonth(monthKey)}
-          onSubmit={(draft) => {
-            dispatch({ type: 'transaction/add', draft });
+          onSubmit={(drafts) => {
+            dispatch({ type: 'transaction/addMany', drafts });
             setQuickAdd(null);
           }}
           onCancel={() => setQuickAdd(null)}

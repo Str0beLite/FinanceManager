@@ -27,6 +27,27 @@ they don't.
 quarterly and yearly cycles — the first billing month also sets the cycle, so a
 quarterly starting in February bills Feb, May, Aug, Nov.
 
+### Splitting one expense across categories
+
+A weekly shop is often two things: most of it groceries, some of it a birthday present.
+Filing the whole amount under either one puts the month's numbers somewhere they are not
+true, so any expense can be split — whether you typed it in or your bank sent it. The
+option is under the amount on the add-expense form, and on each row of the bank review
+inbox.
+
+It opens already halved, so the usual case is picking two categories and filing. Editing
+one side of a two-way split moves the other to match, adding a third category takes its
+share out of the largest one, and **Even** redivides. The parts must add up to the total
+exactly before it will file: a split that is a cent short is a month that is a cent wrong,
+and there would be nothing left to notice it by.
+
+**Each share is then a separate expense.** Edit one, delete one, and the others are
+untouched — they are marked `Split` in the ledger only so two shares of one purchase
+aren't mistaken for the same thing entered twice. For a split bank charge that also means
+the bank never rewrites them again: if the amount changes at the bank afterwards, the sync
+line says so and leaves your shares alone, because the split was your judgement about one
+purchase and there is no way to push a new figure into it without overwriting that.
+
 **Closing a month** compares everything budgeted against everything spent:
 
 - Came in **under**? The surplus is added to your **rollover pool**.
@@ -202,9 +223,8 @@ screen — `server/README.md` has the exact values.
    The rule text is editable, because `SQ *BLUE BOTTLE 4417` is not something worth
    matching on twice.
 4. One charge that was really two things — half the weekly shop, half a birthday present
-   — can be **split across categories**. It opens already halved, so the common case is
-   picking two categories and filing. The parts have to add up to the charge exactly
-   before it will file; a split that is a cent short is a month that is a cent wrong.
+   — can be **split across categories**, the same way a hand-entered expense can. See
+   [splitting](#splitting-one-expense-across-categories).
 
 Some deliberate rules, all covered by tests in `tests/bank.test.ts`:
 
@@ -213,8 +233,9 @@ Some deliberate rules, all covered by tests in `tests/bank.test.ts`:
   and reported, not silently dropped.
 - **A pending charge that posts is updated, not duplicated.** The bank issues a new id
   when it finalises the amount, so the old one is matched and amended in place — the
-  category you already picked survives. A charge that was split keeps its shape: the new
-  amount is shared out in the proportions you set, still adding up to the cent.
+  category you already picked survives. A charge you have already **split** is the one
+  exception: its shares are your own expenses by then, so the bank's new figure is
+  reported rather than written over them.
 - **A charge dated in a closed month goes to the inbox**, whatever the rules say. Closed
   months render from a frozen snapshot, so filing into one would count for nothing and
   appear nowhere.

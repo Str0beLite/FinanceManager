@@ -203,6 +203,7 @@ function split(state: AppState, action: Extract<BankAction, { type: 'bank/split'
     date: row.date,
     note: row.merchant,
     externalId: row.externalId,
+    split: true,
   }));
 
   return {
