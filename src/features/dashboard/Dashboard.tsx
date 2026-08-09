@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AllocationDonut from '@/components/charts/AllocationDonut';
 import { Badge, Button, Card, CardHeader, EmptyState, Fab, Icon, Modal } from '@/components/ui';
 import { useApp } from '@/hooks/useApp';
+import { defaultDateInMonth } from '@/lib/dates';
 import { useAllocationStatus } from '@/hooks/useCategories';
 import { useCurrentMonth } from '@/hooks/useMonth';
 import { useMoney } from '@/hooks/useMoney';
@@ -192,7 +193,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       <Modal open={quickAdd !== null} title="Add expense" onClose={() => setQuickAdd(null)}>
         <TransactionForm
           defaultCategoryId={quickAdd?.categoryId}
-          defaultDate={`${monthKey}-01`}
+          defaultDate={defaultDateInMonth(monthKey)}
           onSubmit={(draft) => {
             dispatch({ type: 'transaction/add', draft });
             setQuickAdd(null);

@@ -20,7 +20,7 @@ export default function BottomNav({ activePage, onNavigate }: BottomNavProps) {
   return (
     <nav
       aria-label="Sections"
-      className="border-border-subtle bg-surface-raised/95 pb-safe fixed inset-x-0 bottom-0 z-40 flex border-t backdrop-blur sm:hidden"
+      className="border-border-subtle bg-surface-raised/95 pb-nav-safe fixed inset-x-0 bottom-0 z-40 flex border-t backdrop-blur sm:hidden"
     >
       {NAV_ITEMS.map((item) => {
         const isActive = item.id === activePage;
