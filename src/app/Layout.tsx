@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { Badge } from '@/components/ui';
+import { IS_BETA } from '@/config/channel';
 import { useMoney } from '@/hooks/useMoney';
 import { useAppState } from '@/hooks/useApp';
 import BottomNav from './BottomNav';
@@ -16,7 +18,19 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="border-border-subtle bg-surface-raised/95 pt-safe sticky top-0 z-40 border-b backdrop-blur">
+      {/* Beta and production sit on one origin with separate data. Say which is
+          which, so a test session is never mistaken for the real budget. */}
+      {IS_BETA && (
+        <p className="bg-warning-soft text-warning border-warning/40 pt-safe border-b px-4 py-1.5 text-center text-xs font-medium">
+          Beta build — its data is kept separate from the live app
+        </p>
+      )}
+
+      <header
+        className={`border-border-subtle bg-surface-raised/95 sticky top-0 z-40 border-b backdrop-blur ${
+          IS_BETA ? '' : 'pt-safe'
+        }`}
+      >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
           {/* On mobile the header names the current screen; the tab bar carries the brand. */}
           <h1 className="text-content truncate text-base font-semibold sm:hidden">
@@ -27,6 +41,7 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
               💰
             </span>
             <span className="text-content text-sm font-semibold">Finance Manager</span>
+            {IS_BETA && <Badge tone="warning">Beta</Badge>}
           </div>
 
           <div className="flex shrink-0 items-baseline gap-2 sm:block sm:text-right">

@@ -84,6 +84,34 @@ Two guards exist for this:
 Once the source is set correctly the app is live at
 `https://<your-username>.github.io/FinanceManager/`.
 
+### Beta channel
+
+A `beta` branch is published alongside production, so you can try a change on the
+real site before merging it:
+
+| Branch | URL |
+| --- | --- |
+| `main` | `https://<your-username>.github.io/FinanceManager/` |
+| `beta` | `https://<your-username>.github.io/FinanceManager/beta/` |
+
+Create the branch once (`git switch -c beta && git push -u origin beta`) and push to
+it whenever you want to test something. A push to *either* branch rebuilds both and
+republishes the whole site — GitHub Pages serves a single artifact per repository, so
+the workflow builds each branch and combines them, production at the root and beta in
+a `beta/` subdirectory. Until the branch exists the workflow just publishes production.
+
+**Beta has its own data.** Both channels share an origin, so they would otherwise share
+one `localStorage` key and testing on beta would edit your real budget. Beta writes to
+a separate key instead, which means it starts empty. To try something against realistic
+numbers, export a backup from production (Settings → Your data) and import it into beta.
+
+Beta is signposted so a test session is never mistaken for the real thing: an amber
+banner across the top, a "Beta" badge next to the title, and a distinct name and colour
+in its web app manifest, so an installed beta app is its own icon rather than a second
+copy of the live one.
+
+To promote a beta change, merge `beta` into `main` as normal.
+
 The Vite `base` is set to `/FinanceManager/`. If you rename the repository, update it
 in `vite.config.ts` to match — including the PWA manifest's `start_url` and `scope`
 in the same file, or the installed app will open a 404.

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
   # Lets you redeploy from the Actions tab without pushing a commit.
   workflow_dispatch:
 
@@ -16,59 +16,89 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+env:
+  BASE: /FinanceManager/
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # A Pages site is a single artifact, so publishing main and beta together
+      # means building both every time and combining them: main at the root,
+      # beta underneath at /beta/. A push to either branch refreshes both.
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-src
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: main-src/package-lock.json
 
-      - run: npm ci
+      - name: Does a beta branch exist?
+        id: beta
+        working-directory: main-src
+        run: |
+          if git ls-remote --exit-code --heads origin beta >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No beta branch yet — publishing production only."
+          fi
 
-      - name: Run tests
-        run: npm test
+      - name: Check out beta
+        if: steps.beta.outputs.exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: beta
+          path: beta-src
 
-      - name: Build
-        run: npm run build
+      - name: Build and verify production
+        working-directory: main-src
+        env:
+          BASE_PATH: ${{ env.BASE }}
+          VITE_CHANNEL: production
+        run: |
+          npm ci
+          npm test
+          npm run build
+          bash scripts/verify-build.sh dist "$BASE_PATH"
 
-      # A build can succeed while producing something that renders blank once
-      # served from the Pages sub-path, so check the artifact before shipping it.
-      - name: Verify the built output is deployable
+      - name: Build and verify beta
+        if: steps.beta.outputs.exists == 'true'
+        working-directory: beta-src
+        env:
+          BASE_PATH: ${{ env.BASE }}beta/
+          VITE_CHANNEL: beta
+        run: |
+          npm ci
+          npm test
+          npm run build
+          bash scripts/verify-build.sh dist "$BASE_PATH"
+
+      - name: Combine into one site
         run: |
           set -euo pipefail
-          test -f dist/index.html
-
-          # The built page must reference the bundle, not the TypeScript source.
-          if grep -q 'src="/src/main.tsx"' dist/index.html; then
-            echo "::error::dist/index.html still points at the TS source entry."
-            exit 1
+          mkdir -p site
+          cp -r main-src/dist/. site/
+          if [ "${{ steps.beta.outputs.exists }}" = "true" ]; then
+            mkdir -p site/beta
+            cp -r beta-src/dist/. site/beta/
+            echo "Published production at / and beta at /beta/."
+          else
+            echo "Published production at / only."
           fi
-
-          # Every asset must sit under the Pages base path and actually exist.
-          refs=$(grep -o '/FinanceManager/assets/[^"]*' dist/index.html || true)
-          if [ -z "$refs" ]; then
-            echo '::error::No /FinanceManager/assets/ references found — check base in vite.config.ts.'
-            exit 1
-          fi
-          for ref in $refs; do
-            path="dist/${ref#/FinanceManager/}"
-            if [ ! -f "$path" ]; then
-              echo "::error::index.html references $ref but $path is missing from the artifact."
-              exit 1
-            fi
-          done
-
-          echo "dist/ references $(echo "$refs" | wc -l) asset(s), all present."
+          # Beta must not shadow production's entry point.
+          test -f site/index.html
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: build
