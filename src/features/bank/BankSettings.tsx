@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Badge,
   Button,
@@ -17,7 +17,13 @@ import {
   exchangePublicToken,
 } from '@/lib/connector';
 import { formatDayLabel } from '@/lib/dates';
-import { openPlaidLink } from '@/lib/plaidLink';
+import {
+  clearOAuthQuery,
+  isOAuthRedirect,
+  rememberLinkToken,
+  takeLinkToken,
+} from '@/lib/oauthSession';
+import { linkRedirectUri, openPlaidLink } from '@/lib/plaidLink';
 import RulesList from './RulesList';
 import SyncStatus from './SyncStatus';
 
@@ -65,38 +71,32 @@ export default function BankSettings() {
     setBusy(false);
   };
 
-  const connectBank = async () => {
-    setBusy(true);
-    setMessage(null);
+  /** Everything after Link hands back a public token, however it got there. */
+  const finishLink = (publicToken: string) => {
+    void (async () => {
+      const exchanged = await exchangePublicToken(config, publicToken);
+      if (!exchanged.ok) {
+        setMessage({ tone: 'error', text: exchanged.error });
+        return;
+      }
+      dispatch({
+        type: 'bank/connect',
+        itemId: exchanged.data.itemId,
+        institutionName: exchanged.data.institutionName,
+      });
+      setMessage({
+        tone: 'ok',
+        text: `${exchanged.data.institutionName} connected. Expenses will appear on the next sync.`,
+      });
+    })();
+  };
 
-    const tokenResult = await createLinkToken(config);
-    if (!tokenResult.ok) {
-      setMessage({ tone: 'error', text: tokenResult.error });
-      setBusy(false);
-      return;
-    }
-
+  const openLink = async (linkToken: string, receivedRedirectUri?: string) => {
     try {
       await openPlaidLink({
-        linkToken: tokenResult.data.linkToken,
-        onSuccess: (publicToken) => {
-          void (async () => {
-            const exchanged = await exchangePublicToken(config, publicToken);
-            if (!exchanged.ok) {
-              setMessage({ tone: 'error', text: exchanged.error });
-              return;
-            }
-            dispatch({
-              type: 'bank/connect',
-              itemId: exchanged.data.itemId,
-              institutionName: exchanged.data.institutionName,
-            });
-            setMessage({
-              tone: 'ok',
-              text: `${exchanged.data.institutionName} connected. Expenses will appear on the next sync.`,
-            });
-          })();
-        },
+        linkToken,
+        receivedRedirectUri,
+        onSuccess: finishLink,
         onExit: (error) => {
           if (error) setMessage({ tone: 'error', text: error });
         },
@@ -110,6 +110,48 @@ export default function BankSettings() {
       setBusy(false);
     }
   };
+
+  const connectBank = async () => {
+    setBusy(true);
+    setMessage(null);
+
+    const tokenResult = await createLinkToken(config, linkRedirectUri());
+    if (!tokenResult.ok) {
+      setMessage({ tone: 'error', text: tokenResult.error });
+      setBusy(false);
+      return;
+    }
+
+    // A bank that uses OAuth unloads this page, so the token it started with
+    // has to be waiting when the browser comes back.
+    rememberLinkToken(tokenResult.data.linkToken);
+    await openLink(tokenResult.data.linkToken);
+  };
+
+  // Picking up a connection an OAuth bank sent back to us. The query is cleared
+  // first: a refresh must not try to resume a connection that already finished.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (resumed.current || !isOAuthRedirect()) return;
+    resumed.current = true;
+
+    const href = window.location.href;
+    const linkToken = takeLinkToken();
+    clearOAuthQuery();
+
+    if (!linkToken) {
+      setMessage({
+        tone: 'error',
+        text: 'Your bank sent you back, but this tab had lost track of the connection. Please start again.',
+      });
+      return;
+    }
+
+    setBusy(true);
+    void openLink(linkToken, href);
+    // Empty deps and the `resumed` guard are deliberate: this is a one-shot
+    // reaction to how the page was loaded, not to anything that can change.
+  }, []);
 
   const disconnect = async (id: string) => {
     setBusy(true);
