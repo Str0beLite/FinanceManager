@@ -3,9 +3,12 @@ import {
   AUTO_SYNC_INTERVAL_MS,
   applyRemovals,
   classifyIncoming,
+  evenSplit,
   matchRule,
   normalizeMerchant,
+  rescale,
   shouldAutoSync,
+  validateSplit,
   type ClassifyInput,
 } from '@/lib/bank';
 import type { BankRule, IncomingTransaction, PendingImport, Transaction } from '@/types';
@@ -344,5 +347,121 @@ describe('history from before the connection', () => {
 
     expect(plan.skippedOld).toBe(0);
     expect(plan.inboxAdded).toHaveLength(1);
+  });
+});
+
+describe('evenSplit', () => {
+  it('divides cleanly when it can', () => {
+    expect(evenSplit(1000, 2)).toEqual([500, 500]);
+    expect(evenSplit(900, 3)).toEqual([300, 300, 300]);
+  });
+
+  it('gives the odd cents away rather than losing them', () => {
+    expect(evenSplit(475, 2)).toEqual([238, 237]);
+    expect(evenSplit(1000, 3)).toEqual([334, 333, 333]);
+  });
+
+  it('always adds back to the charge, whatever the shape', () => {
+    for (const total of [1, 7, 99, 1234, 100_003]) {
+      for (const count of [2, 3, 4, 7]) {
+        const parts = evenSplit(total, count);
+        expect(parts).toHaveLength(count);
+        expect(parts.reduce((sum, part) => sum + part, 0)).toBe(total);
+      }
+    }
+  });
+});
+
+describe('rescale', () => {
+  it('keeps the proportions of a split when the amount moves', () => {
+    expect(rescale([750, 250], 2000)).toEqual([1500, 500]);
+  });
+
+  it('lands on the new total exactly, however the cents fall', () => {
+    const parts = rescale([333, 333, 334], 1001);
+    expect(parts.reduce((sum, part) => sum + part, 0)).toBe(1001);
+  });
+
+  it('hands the whole amount over when there is only one part', () => {
+    expect(rescale([475], 575)).toEqual([575]);
+  });
+
+  it('falls back to an even split when there is no shape to keep', () => {
+    expect(rescale([0, 0], 501)).toEqual([251, 250]);
+  });
+});
+
+describe('validateSplit', () => {
+  const part = (categoryId: string, amountCents: number) => ({ categoryId, amountCents });
+
+  it('passes a split that adds up', () => {
+    expect(validateSplit(1000, [part('a', 600), part('b', 400)])).toBeNull();
+  });
+
+  it('refuses a split that is short, and says by how much', () => {
+    expect(validateSplit(1000, [part('a', 600), part('b', 300)])).toEqual({
+      kind: 'unassigned',
+      differenceCents: 100,
+    });
+  });
+
+  it('refuses one that overshoots, which is the same rule from the other side', () => {
+    expect(validateSplit(1000, [part('a', 600), part('b', 600)])).toEqual({
+      kind: 'unassigned',
+      differenceCents: -200,
+    });
+  });
+
+  it('refuses the degenerate cases', () => {
+    expect(validateSplit(1000, [part('a', 1000)])).toEqual({ kind: 'too-few' });
+    expect(validateSplit(1000, [part('', 500), part('b', 500)])).toEqual({
+      kind: 'missing-category',
+    });
+    expect(validateSplit(1000, [part('a', 1000), part('b', 0)])).toEqual({
+      kind: 'non-positive',
+    });
+    expect(validateSplit(1000, [part('a', 500), part('a', 500)])).toEqual({
+      kind: 'duplicate-category',
+    });
+  });
+});
+
+describe('a charge that was split across categories', () => {
+  function splitCharge(externalId: string, ...amounts: number[]): Transaction[] {
+    return amounts.map((amount, index) => ({
+      ...transaction(`cat-${index}`, amount / 100, '2026-08-12'),
+      id: `row-${index}`,
+      externalId,
+    }));
+  }
+
+  it('is recognised by its total, so a re-sync does not import it again', () => {
+    const plan = classify({
+      incoming: [incoming({ externalId: 'a', amount: 10 })],
+      transactions: splitCharge('a', 600, 400),
+    });
+
+    expect(plan.duplicates).toBe(1);
+    expect(plan.added).toEqual([]);
+    expect(plan.updated).toEqual([]);
+  });
+
+  it('shares an amendment out instead of writing it to one part', () => {
+    // The tip landed after the card was swiped: $10.00 became $12.00, and each
+    // category should carry its share of the extra rather than one carrying all.
+    const plan = classify({
+      incoming: [incoming({ externalId: 'a', amount: 12 })],
+      transactions: splitCharge('a', 750, 250),
+    });
+
+    expect(plan.updated).toEqual([
+      { id: 'row-0', changes: { amountCents: 900, date: '2026-08-12', externalId: 'a' } },
+      { id: 'row-1', changes: { amountCents: 300, date: '2026-08-12', externalId: 'a' } },
+    ]);
+  });
+
+  it('is retracted whole when the bank takes the charge back', () => {
+    const result = applyRemovals(['a'], splitCharge('a', 600, 400), []);
+    expect(result.transactions).toEqual([]);
   });
 });

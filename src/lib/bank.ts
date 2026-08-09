@@ -59,6 +59,92 @@ export function matchRule(
   return best;
 }
 
+/** One category's share of a charge that was split across several. */
+export interface SplitPart {
+  readonly categoryId: string;
+  readonly amountCents: number;
+}
+
+/**
+ * `total` divided `count` ways, adding back to exactly `total`.
+ *
+ * The odd cents go to the earliest parts rather than being dropped: a $4.75
+ * coffee split two ways is 238 and 237, never 237 and 237 with a cent missing
+ * from the month.
+ */
+export function evenSplit(totalCents: number, count: number): number[] {
+  if (count <= 0) return [];
+  const base = Math.floor(totalCents / count);
+  const remainder = totalCents - base * count;
+  return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0));
+}
+
+/**
+ * `amounts` rescaled to add up to `total`, keeping their proportions.
+ *
+ * This is what happens to a split charge when the bank corrects it — a tip
+ * added after the card was swiped. The parts keep their shape, and the cents
+ * rounding drops go to whichever parts came closest to earning them, so the
+ * total still lands exactly on the amount the bank charged.
+ */
+export function rescale(amounts: readonly number[], total: number): number[] {
+  if (amounts.length === 0) return [];
+  if (amounts.length === 1) return [total];
+
+  const previous = amounts.reduce((sum, amount) => sum + amount, 0);
+  if (previous <= 0) return evenSplit(total, amounts.length);
+
+  const exact = amounts.map((amount) => (amount * total) / previous);
+  const shares = exact.map(Math.floor);
+  let left = total - shares.reduce((sum, share) => sum + share, 0);
+
+  const byRemainder = exact
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction);
+
+  for (const { index } of byRemainder) {
+    if (left <= 0) break;
+    shares[index] += 1;
+    left -= 1;
+  }
+
+  return shares;
+}
+
+/** Why a split cannot be filed yet. The wording is the UI's business, not this file's. */
+export type SplitProblem =
+  | { readonly kind: 'too-few' }
+  | { readonly kind: 'missing-category' }
+  | { readonly kind: 'non-positive' }
+  | { readonly kind: 'duplicate-category' }
+  | { readonly kind: 'unassigned'; readonly differenceCents: number };
+
+/**
+ * Checks a split before it becomes transactions, or `null` if it is sound.
+ *
+ * The last rule is the one that matters: the parts must add up to the charge
+ * exactly. A split that is a cent short is a month that is a cent wrong, and
+ * nobody would find it.
+ */
+export function validateSplit(
+  totalCents: number,
+  parts: readonly SplitPart[],
+): SplitProblem | null {
+  if (parts.length < 2) return { kind: 'too-few' };
+  if (parts.some((part) => !part.categoryId)) return { kind: 'missing-category' };
+  if (parts.some((part) => part.amountCents <= 0)) return { kind: 'non-positive' };
+
+  const categories = new Set(parts.map((part) => part.categoryId));
+  if (categories.size !== parts.length) return { kind: 'duplicate-category' };
+
+  const assigned = parts.reduce((sum, part) => sum + part.amountCents, 0);
+  if (assigned !== totalCents) {
+    return { kind: 'unassigned', differenceCents: totalCents - assigned };
+  }
+
+  return null;
+}
+
 export interface TransactionUpdate {
   readonly id: string;
   readonly changes: Partial<TransactionDraft>;
@@ -98,7 +184,13 @@ export interface ClassifyInput {
 /** Where a charge already known to the app currently lives. */
 interface KnownRef {
   kind: 'transaction' | 'inbox';
-  id: string;
+  /**
+   * The rows this one charge became. More than one means it was split across
+   * categories, and an amendment has to be shared out rather than written to
+   * whichever row happened to be found first.
+   */
+  parts: { id: string; amountCents: number }[];
+  /** The charge as a whole, which is what the bank will send again. */
   amountCents: number;
   date: string;
 }
@@ -116,9 +208,15 @@ export function classifyIncoming({
 
   for (const transaction of transactions) {
     if (!transaction.externalId) continue;
+    const known = index.get(transaction.externalId);
+    if (known) {
+      known.parts.push({ id: transaction.id, amountCents: transaction.amountCents });
+      known.amountCents += transaction.amountCents;
+      continue;
+    }
     index.set(transaction.externalId, {
       kind: 'transaction',
-      id: transaction.id,
+      parts: [{ id: transaction.id, amountCents: transaction.amountCents }],
       amountCents: transaction.amountCents,
       date: transaction.date,
     });
@@ -127,7 +225,7 @@ export function classifyIncoming({
   for (const row of inbox) {
     index.set(row.externalId, {
       kind: 'inbox',
-      id: row.id,
+      parts: [{ id: row.id, amountCents: row.amountCents }],
       amountCents: row.amountCents,
       date: row.date,
     });
@@ -184,15 +282,27 @@ export function classifyIncoming({
       }
 
       // A pending charge that posted, or one the bank corrected. Update it in
-      // place so the category the user already picked survives the change.
+      // place so the category the user already picked survives the change — and
+      // when it was split, share the new amount out in the proportions they set.
       if (known.kind === 'transaction') {
-        updated.push({
-          id: known.id,
-          changes: { amountCents, date: item.date, externalId: item.externalId },
+        const shares = rescale(
+          known.parts.map((part) => part.amountCents),
+          amountCents,
+        );
+        known.parts = known.parts.map((part, position) => {
+          updated.push({
+            id: part.id,
+            changes: {
+              amountCents: shares[position],
+              date: item.date,
+              externalId: item.externalId,
+            },
+          });
+          return { ...part, amountCents: shares[position] };
         });
       } else {
         inboxUpdated.push({
-          id: known.id,
+          id: known.parts[0].id,
           changes: {
             amountCents,
             date: item.date,
@@ -200,6 +310,7 @@ export function classifyIncoming({
             pending: item.pending,
           },
         });
+        known.parts = [{ id: known.parts[0].id, amountCents }];
       }
 
       known.amountCents = amountCents;

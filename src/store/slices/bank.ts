@@ -1,4 +1,10 @@
-import { applyRemovals, normalizeMerchant, type IngestPlan } from '@/lib/bank';
+import {
+  applyRemovals,
+  normalizeMerchant,
+  validateSplit,
+  type IngestPlan,
+  type SplitPart,
+} from '@/lib/bank';
 import { monthKeyOf } from '@/lib/dates';
 import { createId } from '@/lib/id';
 import type { AppState, BankRule, PendingImport, Transaction } from '@/types';
@@ -21,6 +27,12 @@ export type BankAction =
       categoryId: string;
       /** When set, a rule is created so the next charge like this files itself. */
       ruleMatch?: string;
+    }
+  | {
+      type: 'bank/split';
+      importId: string;
+      /** Must add up to the charge exactly; the reducer refuses anything else. */
+      parts: readonly SplitPart[];
     }
   | { type: 'bank/dismiss'; importId: string }
   | { type: 'bank/addRule'; match: string; categoryId: string }
@@ -64,6 +76,9 @@ export function bankReducer(state: AppState, action: BankAction): AppState {
 
     case 'bank/approve':
       return approve(state, action);
+
+    case 'bank/split':
+      return split(state, action);
 
     case 'bank/dismiss':
       return withBank(state, {
@@ -157,6 +172,45 @@ function approve(
       rules: action.ruleMatch
         ? addRule(state.bank.rules, action.ruleMatch, action.categoryId)
         : state.bank.rules,
+    },
+  };
+}
+
+/**
+ * Files one reviewed charge across several categories at once.
+ *
+ * Every part carries the same `externalId`, which is what keeps the split
+ * whole for the rest of its life: a later sync sees one charge, an amendment
+ * is shared out across the parts, and a retraction takes all of them.
+ *
+ * No rule is offered here. A rule files a merchant to one category, and there
+ * is no honest way to guess that this particular Costco run was two thirds
+ * groceries — a split is a judgement about one purchase, not about a merchant.
+ */
+function split(state: AppState, action: Extract<BankAction, { type: 'bank/split' }>): AppState {
+  const row = state.bank.inbox.find((entry) => entry.id === action.importId);
+  if (!row) return state;
+
+  // Checked here as well as in the form, because the reducer is what the saved
+  // file is built from: a split that does not add up would be a month that is
+  // quietly wrong, and there would be nothing left to notice it by.
+  if (validateSplit(row.amountCents, action.parts)) return state;
+
+  const transactions: Transaction[] = action.parts.map((part) => ({
+    id: createId(),
+    categoryId: part.categoryId,
+    amountCents: part.amountCents,
+    date: row.date,
+    note: row.merchant,
+    externalId: row.externalId,
+  }));
+
+  return {
+    ...state,
+    transactions: [...state.transactions, ...transactions],
+    bank: {
+      ...state.bank,
+      inbox: state.bank.inbox.filter((entry) => entry.id !== action.importId),
     },
   };
 }
