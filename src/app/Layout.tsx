@@ -5,6 +5,7 @@ import { useMoney } from '@/hooks/useMoney';
 import { useAppState } from '@/hooks/useApp';
 import { useSwipe } from '@/hooks/useSwipe';
 import BottomNav from './BottomNav';
+import PageSlide from './PageSlide';
 import { NAV_ITEMS, adjacentPage, findNavItem, type PageId } from './navigation';
 
 interface LayoutProps {
@@ -18,19 +19,28 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
   const { format } = useMoney();
   const isSettings = activePage === 'settings';
 
+  const nextPage = adjacentPage(activePage, 1);
+  const previousPage = adjacentPage(activePage, -1);
+
   // Swiping sideways walks the tab bar, matching the order of the tabs under
   // your thumb. It lives here rather than in a page because the gesture is
   // navigation — every screen gets it, and none of them has to ask.
   const swipe = useSwipe({
+    canSwipeLeft: nextPage !== null,
+    canSwipeRight: previousPage !== null,
     onSwipeLeft: () => {
-      const next = adjacentPage(activePage, 1);
-      if (next) onNavigate(next);
+      if (nextPage) onNavigate(nextPage);
     },
     onSwipeRight: () => {
-      const previous = adjacentPage(activePage, -1);
-      if (previous) onNavigate(previous);
+      if (previousPage) onNavigate(previousPage);
     },
   });
+
+  // Settings has no place in the tab order, so it sits just past the end of it:
+  // it slides in from the right, matching its corner of the header, and leaves
+  // to the right again. Every real tab keeps its own position.
+  const tabIndex = NAV_ITEMS.findIndex((item) => item.id === activePage);
+  const slideIndex = tabIndex === -1 ? NAV_ITEMS.length : tabIndex;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -112,11 +122,16 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
         </nav>
       </header>
 
+      {/* `overflow-x: clip` rather than `hidden`, so a page dragged sideways is
+          trimmed at the edge without turning this into a scroll container —
+          which would break `position: sticky` for everything inside it. */}
       <main
-        {...swipe}
-        className="pb-nav mx-auto w-full max-w-6xl flex-1 px-4 py-4 sm:pb-6"
+        {...swipe.handlers}
+        className="pb-nav mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-4 py-4 sm:pb-6"
       >
-        {children}
+        <PageSlide index={slideIndex} dx={swipe.dx} dragging={swipe.dragging}>
+          {children}
+        </PageSlide>
       </main>
 
       <footer className="text-content-muted mx-auto hidden w-full max-w-6xl px-4 py-6 text-center text-xs sm:block">

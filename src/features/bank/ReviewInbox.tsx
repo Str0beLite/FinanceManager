@@ -12,9 +12,10 @@ import {
 import { useBankConfig, useInbox } from '@/hooks/useBank';
 import { useActiveCategories } from '@/hooks/useCategories';
 import { useMoney } from '@/hooks/useMoney';
-import { normalizeMerchant } from '@/lib/bank';
+import { normalizeMerchant, type SplitPart } from '@/lib/bank';
 import { formatDayLabel, formatMonthLabel, monthKeyOfIsoDate } from '@/lib/dates';
 import type { Category, PendingImport } from '@/types';
+import SplitEditor from './SplitEditor';
 
 /**
  * Charges the bank sent that nothing knew what to do with.
@@ -24,7 +25,7 @@ import type { Category, PendingImport } from '@/types';
  * second data-entry screen.
  */
 export default function ReviewInbox() {
-  const { rows, approve, dismiss } = useInbox();
+  const { rows, approve, split, dismiss } = useInbox();
   const { isConfigured } = useBankConfig();
   const categories = useActiveCategories();
 
@@ -48,6 +49,7 @@ export default function ReviewInbox() {
             row={row}
             categories={categories}
             onApprove={approve}
+            onSplit={split}
             onDismiss={dismiss}
           />
         ))}
@@ -60,14 +62,16 @@ interface InboxRowProps {
   row: PendingImport;
   categories: readonly Category[];
   onApprove: (importId: string, categoryId: string, ruleMatch?: string) => void;
+  onSplit: (importId: string, parts: readonly SplitPart[]) => void;
   onDismiss: (importId: string) => void;
 }
 
-function InboxRow({ row, categories, onApprove, onDismiss }: InboxRowProps) {
+function InboxRow({ row, categories, onApprove, onSplit, onDismiss }: InboxRowProps) {
   const { format } = useMoney();
   const disabled = categories.length === 0;
   const [categoryId, setCategoryId] = useState('');
   const [remember, setRemember] = useState(true);
+  const [splitting, setSplitting] = useState(false);
   // Statement lines carry store numbers and city codes, so the rule text is
   // editable — "sq *blue bottle 4417" is not something to match on twice.
   const [match, setMatch] = useState(() => normalizeMerchant(row.merchant));
@@ -104,49 +108,73 @@ function InboxRow({ row, categories, onApprove, onDismiss }: InboxRowProps) {
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Select
-          aria-label={`Category for ${row.merchant}`}
-          className="min-w-0 flex-1"
-          value={categoryId}
-          placeholder="Choose a category"
-          options={categories.map((category) => ({
-            value: category.id,
-            label: category.name,
-          }))}
-          disabled={disabled}
-          onChange={(event) => setCategoryId(event.target.value)}
+      {splitting ? (
+        <SplitEditor
+          totalCents={row.amountCents}
+          categories={categories}
+          onFile={(parts) => onSplit(row.id, parts)}
+          onCancel={() => setSplitting(false)}
         />
-        <Button
-          variant="primary"
-          className="shrink-0"
-          disabled={disabled || !categoryId}
-          onClick={() => onApprove(row.id, categoryId, remember ? match : undefined)}
-        >
-          <Icon name="approve" />
-          File it
-        </Button>
-      </div>
-
-      {/* The rule only means something once there is a category to point it at,
-          so it stays out of the way until then — otherwise every row in the
-          queue is twice as tall as the decision it is asking for. */}
-      {categoryId && (
+      ) : (
         <>
-          <Toggle
-            checked={remember}
-            onChange={setRemember}
-            label="Remember this merchant"
-            description="File charges like this automatically from now on."
-          />
-
-          {remember && (
-            <input
-              aria-label={`Rule text for ${row.merchant}`}
-              value={match}
-              onChange={(event) => setMatch(event.target.value)}
-              className={inputClasses}
+          <div className="flex items-center gap-2">
+            <Select
+              aria-label={`Category for ${row.merchant}`}
+              className="min-w-0 flex-1"
+              value={categoryId}
+              placeholder="Choose a category"
+              options={categories.map((category) => ({
+                value: category.id,
+                label: category.name,
+              }))}
+              disabled={disabled}
+              onChange={(event) => setCategoryId(event.target.value)}
             />
+            <Button
+              variant="primary"
+              className="shrink-0"
+              disabled={disabled || !categoryId}
+              onClick={() => onApprove(row.id, categoryId, remember ? match : undefined)}
+            >
+              <Icon name="approve" />
+              File it
+            </Button>
+          </div>
+
+          {/* The rule only means something once there is a category to point it at,
+              so it stays out of the way until then — otherwise every row in the
+              queue is twice as tall as the decision it is asking for. */}
+          {categoryId && (
+            <>
+              <Toggle
+                checked={remember}
+                onChange={setRemember}
+                label="Remember this merchant"
+                description="File charges like this automatically from now on."
+              />
+
+              {remember && (
+                <input
+                  aria-label={`Rule text for ${row.merchant}`}
+                  value={match}
+                  onChange={(event) => setMatch(event.target.value)}
+                  className={inputClasses}
+                />
+              )}
+            </>
+          )}
+
+          {/* One charge, two categories: the shop that was half groceries and
+              half a present. Needs two categories to exist before it can mean
+              anything, so it only appears once there are. */}
+          {categories.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setSplitting(true)}
+              className="text-content-muted hover:text-brand self-start text-xs font-medium underline underline-offset-2"
+            >
+              Split across categories
+            </button>
           )}
         </>
       )}

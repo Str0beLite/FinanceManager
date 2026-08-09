@@ -9,7 +9,7 @@ interface TransactionFormProps {
   initial?: Transaction | null;
   /** Pre-selects a category, e.g. when adding from a dashboard card. */
   defaultCategoryId?: string;
-  /** Pre-fills the date to the 1st of the month being viewed. */
+  /** Pre-fills the date. Today when today is in the month being viewed. */
   defaultDate?: string;
   onSubmit: (draft: TransactionDraft) => void;
   onCancel: () => void;

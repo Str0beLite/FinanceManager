@@ -14,7 +14,12 @@ import { ReviewInbox } from '@/features/bank';
 import { useApp } from '@/hooks/useApp';
 import { useCategoryLookup } from '@/hooks/useCategories';
 import { useMoney } from '@/hooks/useMoney';
-import { formatDayLabel, formatMonthLabel, monthKeyOfIsoDate } from '@/lib/dates';
+import {
+  defaultDateInMonth,
+  formatDayLabel,
+  formatMonthLabel,
+  monthKeyOfIsoDate,
+} from '@/lib/dates';
 import type { Transaction, TransactionDraft } from '@/types';
 import TransactionForm from './TransactionForm';
 
@@ -171,7 +176,7 @@ export default function TransactionsPage() {
       >
         <TransactionForm
           initial={editing}
-          defaultDate={`${selectedMonth}-01`}
+          defaultDate={defaultDateInMonth(selectedMonth)}
           onSubmit={handleSubmit}
           onCancel={() => setFormOpen(false)}
         />
