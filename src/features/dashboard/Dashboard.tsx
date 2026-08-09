@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import AllocationDonut from '@/components/charts/AllocationDonut';
-import { Badge, Button, Card, CardHeader, EmptyState, Fab, Modal } from '@/components/ui';
+import { Badge, Button, Card, CardHeader, EmptyState, Fab, Icon, Modal } from '@/components/ui';
 import { useApp } from '@/hooks/useApp';
 import { useAllocationStatus } from '@/hooks/useCategories';
 import { useCurrentMonth } from '@/hooks/useMonth';
 import { useMoney } from '@/hooks/useMoney';
-import { useSwipe } from '@/hooks/useSwipe';
-import { nextMonthKey, prevMonthKey } from '@/lib/dates';
 import { IncomeCard } from '@/features/income';
 import { TransactionForm } from '@/features/transactions';
 import type { PageId } from '@/app/navigation';
@@ -40,14 +38,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const hasCategories = state.categories.some((category) => !category.archived);
 
-  // Swiping sideways moves through months, the way a native app would.
-  const swipe = useSwipe({
-    onSwipeLeft: () => selectMonth(nextMonthKey(monthKey)),
-    onSwipeRight: () => selectMonth(prevMonthKey(monthKey)),
-  });
-
   return (
-    <div className="flex flex-col gap-4 sm:gap-5" {...swipe}>
+    <div className="flex flex-col gap-4 sm:gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <MonthSelector monthKey={monthKey} onSelect={selectMonth} isClosed={isClosed} />
         {isClosed && (
@@ -113,7 +105,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </span>
             , not 100%.
           </p>
-          <Button size="sm" onClick={() => onNavigate('categories')}>
+          <Button size="sm" onClick={() => onNavigate('plan')}>
             Fix allocation
           </Button>
         </div>
@@ -152,7 +144,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         style={{ backgroundColor: category.color }}
                       />
                       <span className="text-content truncate">{category.name}</span>
-                      {category.hardSet && <Badge tone="brand">🔒</Badge>}
+                      {category.hardSet && <Badge tone="brand"><Icon name="hardSet" label="Hard set" className="text-[0.65em]" /></Badge>}
                     </span>
                     <span className="text-content-muted shrink-0 tabular-nums">
                       {format(category.budgetCents)}
@@ -177,11 +169,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </>
       ) : (
         <EmptyState
-          icon="📊"
+          icon="budget"
           title="Set up your first category"
           description="Categories decide how each paycheck is split. Add a fixed one for rent, then percentage ones for everything else."
           action={
-            <Button variant="primary" onClick={() => onNavigate('categories')}>
+            <Button variant="primary" onClick={() => onNavigate('plan')}>
               Add a category
             </Button>
           }

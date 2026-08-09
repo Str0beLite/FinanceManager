@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Badge } from '@/components/ui';
+import { Badge, Icon } from '@/components/ui';
 import { IS_BETA } from '@/config/channel';
 import { useMoney } from '@/hooks/useMoney';
 import { useAppState } from '@/hooks/useApp';
+import { useSwipe } from '@/hooks/useSwipe';
 import BottomNav from './BottomNav';
-import { NAV_ITEMS, findNavItem, type PageId } from './navigation';
+import { NAV_ITEMS, adjacentPage, findNavItem, type PageId } from './navigation';
 
 interface LayoutProps {
   activePage: PageId;
@@ -15,6 +16,21 @@ interface LayoutProps {
 export default function Layout({ activePage, onNavigate, children }: LayoutProps) {
   const { rolloverPoolCents } = useAppState();
   const { format } = useMoney();
+  const isSettings = activePage === 'settings';
+
+  // Swiping sideways walks the tab bar, matching the order of the tabs under
+  // your thumb. It lives here rather than in a page because the gesture is
+  // navigation — every screen gets it, and none of them has to ask.
+  const swipe = useSwipe({
+    onSwipeLeft: () => {
+      const next = adjacentPage(activePage, 1);
+      if (next) onNavigate(next);
+    },
+    onSwipeRight: () => {
+      const previous = adjacentPage(activePage, -1);
+      if (previous) onNavigate(previous);
+    },
+  });
 
   return (
     <div className="flex min-h-full flex-col">
@@ -37,20 +53,36 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
             {findNavItem(activePage).label}
           </h1>
           <div className="hidden items-center gap-2 sm:flex">
-            <span aria-hidden className="text-xl">
-              💰
-            </span>
+            <Icon name="brand" className="text-brand text-lg" />
             <span className="text-content text-sm font-semibold">Finance Manager</span>
             {IS_BETA && <Badge tone="warning">Beta</Badge>}
           </div>
 
-          <div className="flex shrink-0 items-baseline gap-2 sm:block sm:text-right">
-            <p className="text-content-muted text-[10px] font-medium tracking-wide uppercase">
-              Pool
-            </p>
-            <p className="text-brand text-sm font-semibold tabular-nums">
-              {format(rolloverPoolCents)}
-            </p>
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="flex items-baseline gap-2 sm:block sm:text-right">
+              <p className="text-content-muted text-[10px] font-medium tracking-wide uppercase">
+                Pool
+              </p>
+              <p className="text-brand text-sm font-semibold tabular-nums">
+                {format(rolloverPoolCents)}
+              </p>
+            </div>
+
+            {/* Settings is a place you visit twice a year, so it earns a corner
+                of the header rather than a quarter of the tab bar. */}
+            <button
+              type="button"
+              aria-label="Settings"
+              aria-current={isSettings ? 'page' : undefined}
+              onClick={() => onNavigate(isSettings ? 'dashboard' : 'settings')}
+              className={`flex size-10 items-center justify-center rounded-lg transition-colors ${
+                isSettings
+                  ? 'bg-brand-soft text-brand'
+                  : 'text-content-muted hover:text-content hover:bg-surface-muted active:bg-surface-muted'
+              }`}
+            >
+              <Icon name="settings" className="text-base" />
+            </button>
           </div>
         </div>
 
@@ -66,21 +98,24 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
                 type="button"
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => onNavigate(item.id)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
                   isActive
                     ? 'bg-brand-soft text-brand'
                     : 'text-content-muted hover:text-content hover:bg-surface-muted'
                 }`}
               >
-                <span aria-hidden>{item.icon}</span>
-                {item.label}
+                <Icon name={item.icon} className="text-xs" />
+                {item.shortLabel}
               </button>
             );
           })}
         </nav>
       </header>
 
-      <main className="pb-nav mx-auto w-full max-w-6xl flex-1 px-4 py-4 sm:pb-6">
+      <main
+        {...swipe}
+        className="pb-nav mx-auto w-full max-w-6xl flex-1 px-4 py-4 sm:pb-6"
+      >
         {children}
       </main>
 

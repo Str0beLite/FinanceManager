@@ -7,6 +7,7 @@ import {
   EmptyState,
   EntityTable,
   Fab,
+  Icon,
   Modal,
   type Column,
 } from '@/components/ui';
@@ -66,7 +67,7 @@ export default function CategoriesPage() {
           </span>
           {category.hardSet && (
             <Badge tone="brand" title="Never reduced by a rollover deficit">
-              🔒 Hard set
+              <Icon name="hardSet" className="text-[0.65em]" /> Hard set
             </Badge>
           )}
         </span>
@@ -77,10 +78,10 @@ export default function CategoriesPage() {
       header: 'Allocation',
       render: (category) =>
         category.allocationType === 'fixed' ? (
-          <span className="text-content-muted">{format(category.fixedCents)} fixed</span>
+          <span className="text-content-muted">{format(category.fixedCents)} fixed cost</span>
         ) : (
           <span className="text-content-muted">
-            {formatPercentBp(category.percentBp)} of remainder
+            {formatPercentBp(category.percentBp)} of what&rsquo;s left
           </span>
         ),
     },
@@ -99,7 +100,7 @@ export default function CategoriesPage() {
       <Card>
         <CardHeader
           title="Categories"
-          description="Fixed amounts come off the top. Percentages split what's left. Hard-set categories are protected from rollover cuts."
+          description="Fixed costs come off the top. Percentages split what's left. Hard-set categories are protected from rollover cuts."
           hideActionOnMobile
           action={
             <Button variant="primary" onClick={openNew}>
@@ -114,7 +115,7 @@ export default function CategoriesPage() {
           getKey={(category) => category.id}
           emptyState={
             <EmptyState
-              icon="🗂️"
+              icon="categories"
               title="No categories yet"
               description="Start with your biggest fixed bill — rent or a mortgage — then add percentage categories for the rest."
               action={
@@ -134,7 +135,7 @@ export default function CategoriesPage() {
                   dispatch({ type: 'category/reorder', id: category.id, direction: 'up' })
                 }
               >
-                ↑
+                <Icon name="moveUp" />
               </Button>
               <Button
                 size="sm"
@@ -144,7 +145,7 @@ export default function CategoriesPage() {
                   dispatch({ type: 'category/reorder', id: category.id, direction: 'down' })
                 }
               >
-                ↓
+                <Icon name="moveDown" />
               </Button>
               <Button
                 size="sm"

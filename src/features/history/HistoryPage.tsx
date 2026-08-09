@@ -52,7 +52,7 @@ export default function HistoryPage() {
 
         {views.length === 0 ? (
           <EmptyState
-            icon="📅"
+            icon="history"
             title="No months yet"
             description="Once you close your first month it will appear here with its settlement."
           />

@@ -132,12 +132,16 @@ offers a reload rather than silently sitting on the old build.
 
 **It behaves like an app:**
 
-- Bottom tab bar in thumb reach, all six sections visible at once. Becomes a
-  header nav from the `sm` breakpoint up.
-- **Swipe left and right on the dashboard to move between months.** Vertical
-  drags are ignored, so scrolling never flips the month by accident, and the
-  browser's own edge swipe-to-go-back is suppressed so it can't hijack the
-  gesture.
+- Bottom tab bar in thumb reach: four icon-only tabs, each a quarter of the
+  screen wide. Becomes a labelled header nav from the `sm` breakpoint up.
+  Settings sits in the header instead of spending a tab on a screen you visit
+  twice a year.
+- **Swipe left and right to move between tabs**, in the order they appear in
+  the bar. The ends don't wrap, so the first and last tabs feel like walls.
+  Vertical drags are ignored, so scrolling never changes tab by accident; a
+  drag inside an open sheet is ignored too; and the browser's own edge
+  swipe-to-go-back is suppressed so it can't hijack the gesture. Months change
+  with the arrows either side of the month name.
 - The dashboard leads with one number — what's left to spend — instead of four
   equal tiles, with the allocation split as a single stacked bar rather than a
   donut that would cost 170px of height.
@@ -160,7 +164,7 @@ re-import later, or on another machine.
 
 ```
 src/
-  config/       Constants, cadences, currencies, colour palette
+  config/       Constants, cadences, currencies, colour palette, icon registry
   types/        One file per domain concept
   lib/          Pure engine — money, dates, budget, subscriptions, storage
   store/        Reducer split into per-domain slices
@@ -181,4 +185,11 @@ Two rules keep it easy to change:
    what it returns; none of them do arithmetic of their own.
 
 Adding a screen means adding a folder under `features/` and one entry in
-`src/app/navigation.ts` — that array drives both the nav bar and which page renders.
+`src/app/navigation.ts` — that array drives the nav bar, which page renders, and
+the order a swipe walks through. Put it in `UTILITY_ITEMS` instead of `NAV_ITEMS`
+and it becomes reachable without claiming a tab, the way Settings does.
+
+Icons work the same way. `src/config/icons.ts` maps a name like `hardSet` to a
+glyph, and `<Icon name="hardSet" />` is the only thing components see — so
+re-drawing a concept is one line, and the icon package is imported in exactly one
+file, which keeps the bundle down to the glyphs actually listed.

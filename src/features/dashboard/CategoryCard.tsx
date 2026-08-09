@@ -1,4 +1,4 @@
-import { Badge, ProgressBar } from '@/components/ui';
+import { Badge, Icon, ProgressBar } from '@/components/ui';
 import { useMoney } from '@/hooks/useMoney';
 import type { CategoryComputation } from '@/types';
 
@@ -24,7 +24,7 @@ export default function CategoryCard({ category, onAddSpending }: CategoryCardPr
         </div>
         {category.hardSet && (
           <Badge tone="brand" title="Hard set — never reduced by a rollover deficit">
-            🔒 Hard set
+            <Icon name="hardSet" className="text-[0.65em]" /> Hard set
           </Badge>
         )}
       </header>

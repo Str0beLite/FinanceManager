@@ -75,7 +75,7 @@
     /*
      * Vertical: stops iOS bouncing the page when a sheet is scrolled to its end.
      * Horizontal: stops the browser's edge swipe-to-go-back, which otherwise
-     * competes with this app's own swipe-between-months gesture and navigates
+     * competes with this app's own swipe-between-tabs gesture and navigates
      * away from it entirely.
      */
     overscroll-behavior: none;
