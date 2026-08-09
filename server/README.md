@@ -31,6 +31,43 @@ You need a [Plaid account](https://dashboard.plaid.com/signup) — sandbox keys
 are free and issued immediately — and a Cloudflare account. The free tier covers
 this comfortably.
 
+There are two routes. The first needs nothing installed on your machine.
+
+### With GitHub Actions (recommended)
+
+`.github/workflows/deploy-connector.yml` deploys this Worker on every push to
+`main` that touches `server/`, and can be run by hand from the **Actions** tab.
+It creates the KV namespace if it doesn't exist, uploads the secrets, and sets
+`ALLOWED_ORIGIN` for you.
+
+Add five **repository secrets** under Settings → Secrets and variables → Actions:
+
+| Secret | Where it comes from |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare dashboard → My Profile → API Tokens. Needs **Workers Scripts: Edit** and **Workers KV Storage: Edit** on your account. |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → Workers & Pages, in the right-hand sidebar |
+| `PLAID_CLIENT_ID` | Plaid dashboard → Team Settings → Keys |
+| `PLAID_SECRET` | Same page — the **sandbox** secret to begin with |
+| `APP_TOKEN` | Invent one: `openssl rand -hex 32` |
+
+Two optional **repository variables** (same page, "Variables" tab) if the
+defaults don't suit:
+
+| Variable | Default |
+| --- | --- |
+| `PAGES_ORIGIN` | `https://<your-username>.github.io` — set this if the app is on a custom domain |
+| `PLAID_ENV` | `sandbox` — set to `production` once Plaid has approved you |
+
+Then run **Actions → Deploy connector → Run workflow**. The run summary prints
+the Worker URL to paste into the app.
+
+Set all five or none: a repository with none of them skips the deploy and stays
+green, because bank syncing is opt-in. A repository with *some* of them fails
+loudly, because a Worker missing one fails at request time instead, which is a
+much worse place to find out.
+
+### By hand
+
 ```bash
 cd server
 npm install
@@ -50,12 +87,14 @@ npx wrangler secret put APP_TOKEN     # invent a long random string
 npx wrangler deploy
 ```
 
+### Either way
+
 Generate an `APP_TOKEN` with something like `openssl rand -hex 32`. Without it
 the Worker's URL alone would hand your bank transactions to anyone who found it,
 so it is not optional — the Worker rejects every request that doesn't carry it.
 
 Then open the app, go to **Settings → Bank syncing**, and paste in the Worker URL
-that `wrangler deploy` printed plus the same `APP_TOKEN`.
+plus the same `APP_TOKEN`.
 
 ## Trying it locally first
 
@@ -75,13 +114,14 @@ plausible-looking fake transactions.
 
 ## Going to production
 
-Get production access approved in the Plaid dashboard, then:
+Get production access approved in the Plaid dashboard, then replace the
+`PLAID_SECRET` with the production one and switch the environment:
 
-```bash
-npx wrangler secret put PLAID_SECRET   # the production secret, not the sandbox one
-```
+- **Via Actions:** update the `PLAID_SECRET` repository secret, set the
+  `PLAID_ENV` repository variable to `production`, and re-run the workflow.
+- **By hand:** `npx wrangler secret put PLAID_SECRET`, change `PLAID_ENV` to
+  `"production"` in `wrangler.toml`, and redeploy.
 
-and change `PLAID_ENV` to `"production"` in `wrangler.toml` before redeploying.
 Nothing in the code changes.
 
 ## The API
