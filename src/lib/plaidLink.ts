@@ -67,11 +67,19 @@ function loadPlaid(): Promise<PlaidGlobal> {
 /**
  * Where Plaid should send the browser back to after an OAuth bank.
  *
- * Query and hash are dropped, because Plaid matches this against the dashboard
- * list exactly, and because the address it returns to carries its own query.
+ * Plaid compares this against the dashboard list byte for byte — no URL
+ * normalising — so the two ways the same page can be addressed have to be
+ * flattened here, or a correctly registered URI still gets rejected:
+ *
+ *   /FinanceManager/index.html  ->  /FinanceManager/
+ *   /FinanceManager            ->  /FinanceManager/
+ *
+ * Query and hash go too, since the address Plaid returns to carries its own.
  */
 export function linkRedirectUri(): string {
-  return `${window.location.origin}${window.location.pathname}`;
+  const { origin, pathname } = window.location;
+  const path = pathname.replace(/index\.html$/, '');
+  return `${origin}${path.endsWith('/') ? path : `${path}/`}`;
 }
 
 export interface OpenLinkOptions {

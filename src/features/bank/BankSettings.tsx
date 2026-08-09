@@ -115,9 +115,16 @@ export default function BankSettings() {
     setBusy(true);
     setMessage(null);
 
-    const tokenResult = await createLinkToken(config, linkRedirectUri());
+    const redirectUri = linkRedirectUri();
+    const tokenResult = await createLinkToken(config, redirectUri);
     if (!tokenResult.ok) {
-      setMessage({ tone: 'error', text: tokenResult.error });
+      // Plaid compares this against the dashboard exactly, and its complaint
+      // doesn't say what it was given — so show it, rather than leaving anyone
+      // to compare two invisible strings.
+      const text = /redirect/i.test(tokenResult.error)
+        ? `${tokenResult.error} This app sent: ${redirectUri} — it must appear in your Plaid dashboard, for this environment, character for character.`
+        : tokenResult.error;
+      setMessage({ tone: 'error', text });
       setBusy(false);
       return;
     }
