@@ -1,6 +1,7 @@
 import { SCHEMA_VERSION, STORAGE_KEY } from '@/config/constants';
 import { DEFAULT_CURRENCY, DEFAULT_LOCALE } from '@/config/currency';
-import type { AppState, BankState } from '@/types';
+import type { AppState, BankConnection, BankState } from '@/types';
+import { monthKeyOf } from './dates';
 
 export function createEmptyBankState(): BankState {
   return {
@@ -90,10 +91,23 @@ function parseBank(input: unknown): AppState['bank'] {
   return {
     connectorUrl: asString(input.connectorUrl, fallback.connectorUrl),
     connectorToken: asString(input.connectorToken, fallback.connectorToken),
-    connections: asArray(input.connections),
+    connections: asArray<BankConnection>(input.connections).map(parseConnection),
     rules: asArray(input.rules),
     inbox: asArray(input.inbox),
   };
+}
+
+/**
+ * A connection saved before `importFrom` existed keeps its behaviour: it was
+ * already syncing, so its history has either arrived or been dealt with, and
+ * imposing a cutoff now would silently drop charges it would have taken
+ * yesterday. The month it was connected in is the honest default.
+ */
+function parseConnection(connection: BankConnection): BankConnection {
+  if (connection.importFrom) return connection;
+  const connectedAt = connection.connectedAt ?? '';
+  const monthKey = connectedAt.length >= 7 ? connectedAt.slice(0, 7) : monthKeyOf();
+  return { ...connection, importFrom: `${monthKey}-01` };
 }
 
 export function loadState(storage: Storage = localStorage): AppState {

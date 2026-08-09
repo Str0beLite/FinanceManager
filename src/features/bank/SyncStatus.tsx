@@ -25,7 +25,10 @@ export default function SyncStatus() {
               <>
                 {' '}
                 {summary.imported} filed, {summary.needsReview} to review
-                {summary.skippedCredits > 0 && `, ${summary.skippedCredits} refunds ignored`}.
+                {summary.skippedCredits > 0 && `, ${summary.skippedCredits} refunds ignored`}
+                {summary.skippedOld > 0 &&
+                  `, ${summary.skippedOld} from before you connected ignored`}
+                .
               </>
             )}
           </span>

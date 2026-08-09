@@ -67,6 +67,15 @@ export interface BankConnection {
   readonly id: string;
   readonly institutionName: string;
   readonly connectedAt: string;
+  /**
+   * `YYYY-MM-DD`. Charges dated before this are dropped on arrival.
+   *
+   * Banks hand over months of history on the first sync, and a budget you have
+   * been keeping by hand already accounts for that spending. Importing it would
+   * double-count what you typed in and bury the review inbox under months of
+   * charges filed against books that are already closed.
+   */
+  readonly importFrom: string;
   /** Plaid's sync cursor, so each sync only asks for what is new. */
   readonly cursor: string | null;
   readonly lastSyncedAt: string | null;
