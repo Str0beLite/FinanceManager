@@ -176,11 +176,11 @@ So the secrets go somewhere you own instead: a single Cloudflare Worker in
 only to that Worker; the Worker talks to Plaid. The access token stays in your Worker's
 KV and never comes back to the browser.
 
-**Setting it up needs nothing installed.** Add five repository secrets and run the
-**Deploy connector** workflow — it creates the KV namespace, uploads the secrets and
-sets the allowed origin for you. `server/README.md` lists them, and covers the manual
-`wrangler` route if you prefer it. Repositories with no Cloudflare secrets set skip that
-workflow and stay green.
+**Setting it up needs nothing installed.** Claim a `workers.dev` subdomain in the
+Cloudflare dashboard, add five repository secrets, and run the **Deploy connector**
+workflow — it creates the KV namespace, uploads the secrets and sets the allowed origin
+for you. `server/README.md` lists them, and covers the manual `wrangler` route if you
+prefer it. Repositories with no Cloudflare secrets set skip that workflow and stay green.
 
 Sandbox keys are free and issued immediately, which is enough to try the whole thing
 end to end against Plaid's fake bank.

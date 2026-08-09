@@ -141,6 +141,43 @@ jobs:
 
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
+      - name: Check the account can serve a Worker URL
+        if: steps.setup.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          # A new Cloudflare account has no workers.dev subdomain, and claiming
+          # one means choosing a name, so it can't be done from here. Wrangler
+          # only complains about it *after* uploading the Worker, in a message
+          # about routes that doesn't say what to actually go and do.
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
+
+          if ! body=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api"); then
+            echo "::notice::Could not check for a workers.dev subdomain. Letting the deploy try anyway."
+            exit 0
+          fi
+
+          # `|| true`, because a non-JSON body — a proxy's error page, say —
+          # must not take the step down with it under `set -e`.
+          subdomain=$(printf '%s' "$body" | jq -r '.result.subdomain // empty' 2>/dev/null || true)
+          if [ -n "$subdomain" ]; then
+            echo "::notice::Deploying to $subdomain.workers.dev."
+            exit 0
+          fi
+
+          # Only a clean "yes, and there isn't one" is worth failing on. A token
+          # that can't read this endpoint, or a bad day at Cloudflare, should not
+          # block a deploy that would otherwise work.
+          if printf '%s' "$body" | jq -e '.success == true' > /dev/null 2>&1; then
+            echo "::error::This Cloudflare account has no workers.dev subdomain, so the Worker would have nowhere to be served from. Claim one — it is free and takes a minute — at https://dash.cloudflare.com/?to=/:account/workers/onboarding, then re-run this workflow."
+            exit 1
+          fi
+
+          echo "::notice::Could not confirm a workers.dev subdomain. Letting the deploy try anyway."
+
       - name: Point wrangler.toml at that namespace
         if: steps.setup.outputs.ready == 'true'
         env:
@@ -163,6 +200,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: server
+          # The action's own default is older than what server/package.json asks
+          # for, and it doesn't read that file. Pin it so a deploy from here uses
+          # the same Wrangler a local `npm run deploy` would.
+          wranglerVersion: '3.114.17'
           # Uploaded as Worker secrets before the deploy, so they never appear
           # in wrangler.toml or in the log.
           secrets: |
