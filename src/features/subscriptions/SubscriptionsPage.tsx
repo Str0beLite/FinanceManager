@@ -145,7 +145,7 @@ export default function SubscriptionsPage() {
           getKey={(subscription) => subscription.id}
           emptyState={
             <EmptyState
-              icon="🔁"
+              icon="subscriptions"
               title="No subscriptions yet"
               description={
                 state.categories.length === 0

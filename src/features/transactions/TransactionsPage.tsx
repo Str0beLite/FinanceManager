@@ -111,7 +111,7 @@ export default function TransactionsPage() {
           titleKey="category"
           emptyState={
             <EmptyState
-              icon="🧾"
+              icon="spend"
               title="Nothing logged this month"
               description={
                 state.categories.length === 0

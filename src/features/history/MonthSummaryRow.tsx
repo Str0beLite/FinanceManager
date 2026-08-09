@@ -1,4 +1,4 @@
-import { Badge, Button } from '@/components/ui';
+import { Badge, Button, Icon } from '@/components/ui';
 import type { MonthView } from '@/hooks/useMonth';
 import { useMoney } from '@/hooks/useMoney';
 import { formatMonthLabel } from '@/lib/dates';
@@ -22,30 +22,39 @@ export default function MonthSummaryRow({
 
   return (
     <li className="border-border-subtle flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpen}
-            className="text-content hover:text-brand text-sm font-semibold"
-          >
+      {/* The whole summary opens the month, rather than just the month name —
+          a two-line block is a thumb-sized target; a text link is not. */}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${formatMonthLabel(view.monthKey)}`}
+        className="group -m-1 min-w-0 flex-1 rounded-md p-1 text-left"
+      >
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-content group-hover:text-brand text-sm font-semibold">
             {formatMonthLabel(view.monthKey)}
-          </button>
-          {isClosed ? <Badge>🔒 Closed</Badge> : <Badge tone="brand">Open</Badge>}
+          </span>
+          {isClosed ? (
+            <Badge>
+              <Icon name="closed" className="text-[0.65em]" /> Closed
+            </Badge>
+          ) : (
+            <Badge tone="brand">Open</Badge>
+          )}
           {record.deficitInCents > 0 && (
             <Badge tone="warning">−{format(record.deficitInCents)} carried in</Badge>
           )}
           {record.poolAppliedCents > 0 && (
             <Badge tone="positive">{format(record.poolAppliedCents)} from savings</Badge>
           )}
-        </div>
-        <p className="text-content-muted mt-1 text-xs">
+        </span>
+        <span className="text-content-muted mt-1 block text-xs">
           {format(computation.totalSpentCents)} spent of{' '}
           {format(computation.totalBudgetCents)} budgeted
           {computation.unabsorbedDeficitCents > 0 &&
             ` · ${format(computation.unabsorbedDeficitCents)} rolls on`}
-        </p>
-      </div>
+        </span>
+      </button>
 
       <div className="flex items-center gap-3">
         <span

@@ -19,8 +19,8 @@ interface CategoryFormProps {
 }
 
 const ALLOCATION_OPTIONS = [
-  { value: 'percent', label: 'Percentage of what is left' },
-  { value: 'fixed', label: 'Fixed amount off the top' },
+  { value: 'percent', label: 'Percentage' },
+  { value: 'fixed', label: 'Fixed cost' },
 ];
 
 export default function CategoryForm({ initial, onSubmit, onCancel }: CategoryFormProps) {
@@ -87,9 +87,11 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: CategoryFo
         )}
       </FormField>
 
+      {/* The option names carry the choice; the hint carries the consequence,
+          so neither has to do both jobs. */}
       <FormField
-        label="How is it funded?"
-        hint="Fixed amounts are taken out first; percentages split whatever remains."
+        label="Funding"
+        hint="Fixed costs come out first. Percentages split whatever is left."
       >
         {(id) => (
           <Select
