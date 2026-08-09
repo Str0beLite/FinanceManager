@@ -1,4 +1,5 @@
 import { applyRemovals, normalizeMerchant, type IngestPlan } from '@/lib/bank';
+import { monthKeyOf } from '@/lib/dates';
 import { createId } from '@/lib/id';
 import type { AppState, BankRule, PendingImport, Transaction } from '@/types';
 
@@ -41,6 +42,9 @@ export function bankReducer(state: AppState, action: BankAction): AppState {
             id: action.itemId,
             institutionName: action.institutionName,
             connectedAt: new Date().toISOString(),
+            // The month you connected in, from its first day: enough to complete
+            // the month you are living in, without reaching into closed books.
+            importFrom: `${monthKeyOf()}-01`,
             cursor: null,
             lastSyncedAt: null,
           },

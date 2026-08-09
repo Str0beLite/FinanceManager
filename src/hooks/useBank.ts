@@ -18,6 +18,7 @@ export interface SyncSummary {
   readonly imported: number;
   readonly needsReview: number;
   readonly skippedCredits: number;
+  readonly skippedOld: number;
 }
 
 export type SyncStatus = 'idle' | 'syncing';
@@ -70,7 +71,7 @@ export function useBankSync() {
     setStatus('syncing');
     setError(null);
 
-    const totals = { imported: 0, needsReview: 0, skippedCredits: 0 };
+    const totals = { imported: 0, needsReview: 0, skippedCredits: 0, skippedOld: 0 };
 
     try {
       for (const connection of latest.current.bank.connections) {
@@ -88,11 +89,13 @@ export function useBankSync() {
           transactions: current.transactions,
           inbox: current.bank.inbox,
           closedMonths: closedMonthKeys(current),
+          importFrom: connection.importFrom,
         });
 
         totals.imported += plan.added.length;
         totals.needsReview += plan.inboxAdded.length;
         totals.skippedCredits += plan.skippedCredits;
+        totals.skippedOld += plan.skippedOld;
 
         dispatch({
           type: 'bank/synced',

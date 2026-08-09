@@ -216,6 +216,11 @@ Some deliberate rules, all covered by tests in `tests/bank.test.ts`:
 - **Nothing imports twice.** Every synced expense carries its bank id, and the sync cursor
   only advances once a whole batch has been applied — so a failure halfway re-fetches
   rather than skips.
+- **History from before you connected is ignored.** Banks hand over months of it on the
+  first sync. You have already budgeted those months by hand, so importing it would
+  double-count what you typed in and bury the inbox under charges destined for closed
+  books. The cutoff is the first of the month you connected in, kept per connection, and
+  the count of what was skipped is reported rather than hidden.
 
 Disconnecting a bank unlinks it at Plaid and deletes the stored token. Expenses already
 imported are your own records by then, so they stay.
