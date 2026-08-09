@@ -49,6 +49,9 @@ function classify(overrides: Partial<ClassifyInput> = {}) {
     transactions: [],
     inbox: [],
     closedMonths: new Set(),
+    // No cutoff unless a test is about the cutoff, so every other case still
+    // asks what it was written to ask.
+    importFrom: '',
     ...overrides,
   });
 }
@@ -283,5 +286,63 @@ describe('shouldAutoSync', () => {
   it('syncs again once the window has passed', () => {
     const stale = new Date(now - AUTO_SYNC_INTERVAL_MS).toISOString();
     expect(shouldAutoSync(stale, now)).toBe(true);
+  });
+});
+
+describe('history from before the connection', () => {
+  it('is dropped rather than imported', () => {
+    const plan = classify({
+      importFrom: '2026-08-01',
+      incoming: [
+        incoming({ externalId: 'old-1', date: '2026-07-31' }),
+        incoming({ externalId: 'new-1', date: '2026-08-01' }),
+      ],
+      rules: [rule('blue bottle', 'cat-coffee')],
+    });
+
+    expect(plan.skippedOld).toBe(1);
+    expect(plan.added).toHaveLength(1);
+    expect(plan.added[0]?.externalId).toBe('new-1');
+  });
+
+  it('does not queue for review either — the point is to not deal with it at all', () => {
+    const plan = classify({
+      importFrom: '2026-08-01',
+      incoming: [incoming({ date: '2026-05-04' })],
+    });
+
+    expect(plan.inboxAdded).toHaveLength(0);
+    expect(plan.added).toHaveLength(0);
+    expect(plan.skippedOld).toBe(1);
+  });
+
+  it('takes the first of the month itself, which is the month you connected in', () => {
+    const plan = classify({
+      importFrom: '2026-08-01',
+      incoming: [incoming({ date: '2026-08-01' })],
+    });
+
+    expect(plan.skippedOld).toBe(0);
+    expect(plan.inboxAdded).toHaveLength(1);
+  });
+
+  it('counts an old charge as old, not as a refund', () => {
+    const plan = classify({
+      importFrom: '2026-08-01',
+      incoming: [incoming({ date: '2026-06-02', amount: -20 })],
+    });
+
+    expect(plan.skippedOld).toBe(1);
+    expect(plan.skippedCredits).toBe(0);
+  });
+
+  it('imports everything when no cutoff is set', () => {
+    const plan = classify({
+      importFrom: '',
+      incoming: [incoming({ date: '2020-01-01' })],
+    });
+
+    expect(plan.skippedOld).toBe(0);
+    expect(plan.inboxAdded).toHaveLength(1);
   });
 });

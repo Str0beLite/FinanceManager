@@ -68,3 +68,28 @@ describe('export / import round trip', () => {
     expect(deserializeState('not json at all').error).toMatch(/valid JSON/);
   });
 });
+
+describe('a bank connection saved before import cutoffs existed', () => {
+  it('keeps syncing as it did, from the month it was connected in', () => {
+    const parsed = parseState({
+      version: SCHEMA_VERSION,
+      bank: {
+        connectorUrl: 'https://c.workers.dev',
+        connectorToken: 't',
+        connections: [
+          {
+            id: 'item-1',
+            institutionName: 'Old Bank',
+            connectedAt: '2026-06-14T10:00:00.000Z',
+            cursor: 'abc',
+            lastSyncedAt: '2026-06-20T10:00:00.000Z',
+          },
+        ],
+        rules: [],
+        inbox: [],
+      },
+    });
+
+    expect(parsed.bank.connections[0]?.importFrom).toBe('2026-06-01');
+  });
+});

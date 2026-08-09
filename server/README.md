@@ -143,7 +143,15 @@ plausible-looking fake transactions.
 ## Going to production
 
 Get production access approved in the Plaid dashboard, then replace the
-`PLAID_SECRET` with the production one and switch the environment:
+`PLAID_SECRET` with the production one and switch the environment.
+
+**Disconnect any sandbox bank first**, while the connector is still on sandbox.
+Access tokens belong to the environment that issued them, so after the switch a
+sandbox connection can't be unlinked cleanly — it just sits there failing.
+
+**Register your redirect URIs again under Production.** The allowed list is
+per-environment, so the entries that made sandbox work do not carry over, and
+the symptom is the same silent loop on the bank's login screen.
 
 - **Via Actions:** update the `PLAID_SECRET` repository secret, set the
   `PLAID_ENV` repository variable to `production`, and re-run the workflow.

@@ -94,3 +94,22 @@ describe('the pending link token', () => {
     expect(takeLinkToken()).toBeNull();
   });
 });
+
+describe('linkRedirectUri', () => {
+  /** Plaid string-compares this, so the shapes that mean the same page must not differ. */
+  const cases: ReadonlyArray<readonly [string, string, string]> = [
+    ['a directory URL', '/FinanceManager/', 'https://you.github.io/FinanceManager/'],
+    ['a missing trailing slash', '/FinanceManager', 'https://you.github.io/FinanceManager/'],
+    ['an explicit index.html', '/FinanceManager/index.html', 'https://you.github.io/FinanceManager/'],
+    ['the beta channel', '/FinanceManager/beta/', 'https://you.github.io/FinanceManager/beta/'],
+    ['beta via index.html', '/FinanceManager/beta/index.html', 'https://you.github.io/FinanceManager/beta/'],
+  ];
+
+  it.each(cases)('normalises %s', async (_name, pathname, expected) => {
+    (globalThis as { window?: unknown }).window = {
+      location: { origin: 'https://you.github.io', pathname },
+    };
+    const { linkRedirectUri } = await import('@/lib/plaidLink');
+    expect(linkRedirectUri()).toBe(expected);
+  });
+});

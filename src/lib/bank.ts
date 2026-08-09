@@ -77,6 +77,8 @@ export interface IngestPlan {
   readonly inboxUpdated: readonly InboxUpdate[];
   /** Refunds and deposits, which this app has nowhere to put. Reported, not hidden. */
   readonly skippedCredits: number;
+  /** History from before the connection's `importFrom`. Also reported, not hidden. */
+  readonly skippedOld: number;
   /** Charges already imported. Expected on every sync — the cursor overlaps. */
   readonly duplicates: number;
 }
@@ -89,6 +91,8 @@ export interface ClassifyInput {
   readonly inbox: readonly PendingImport[];
   /** Month keys whose books are closed, from `knownMonthKeys` / month records. */
   readonly closedMonths: ReadonlySet<string>;
+  /** `YYYY-MM-DD`; anything older is not this connection's business. */
+  readonly importFrom: string;
 }
 
 /** Where a charge already known to the app currently lives. */
@@ -106,6 +110,7 @@ export function classifyIncoming({
   transactions,
   inbox,
   closedMonths,
+  importFrom,
 }: ClassifyInput): IngestPlan {
   const index = new Map<string, KnownRef>();
 
@@ -143,9 +148,18 @@ export function classifyIncoming({
   const inboxUpdated: InboxUpdate[] = [];
   const claimed = new Set<string>();
   let skippedCredits = 0;
+  let skippedOld = 0;
   let duplicates = 0;
 
   for (const item of incoming) {
+    // Checked before anything else: history from before the connection is not
+    // this app's to interpret, whatever else is true of it. Dates are
+    // `YYYY-MM-DD`, so comparing them as strings orders them correctly.
+    if (importFrom && item.date < importFrom) {
+      skippedOld += 1;
+      continue;
+    }
+
     // Plaid's amount is positive when money leaves the account. This app only
     // models spending, so a refund or a deposit has nowhere to go.
     if (item.amount <= 0) {
@@ -236,7 +250,7 @@ export function classifyIncoming({
     });
   }
 
-  return { added, updated, inboxAdded, inboxUpdated, skippedCredits, duplicates };
+  return { added, updated, inboxAdded, inboxUpdated, skippedCredits, skippedOld, duplicates };
 }
 
 /** Drops charges the bank has retracted, wherever they ended up. */
