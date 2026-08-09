@@ -79,7 +79,15 @@ async function route(request: Request, url: URL, env: Env): Promise<Response> {
   }
 
   if (request.method === 'POST' && path === '/link/token') {
-    return json(await createLinkToken(env), 200, env);
+    const { redirectUri } = await readJson<{ redirectUri?: string }>(request);
+    // Banks that use OAuth send the browser away and back again, and Plaid will
+    // only return it to an address registered in your dashboard. Pinning it to
+    // ALLOWED_ORIGIN means this Worker can't be talked into minting a token
+    // that lands someone on a site you don't control.
+    if (redirectUri && !redirectUri.startsWith(`${env.ALLOWED_ORIGIN}/`)) {
+      return json({ error: 'redirectUri must be on the allowed origin' }, 400, env);
+    }
+    return json(await createLinkToken(env, redirectUri ?? null), 200, env);
   }
 
   if (request.method === 'POST' && path === '/link/exchange') {
@@ -130,7 +138,10 @@ async function plaid<T>(env: Env, path: string, body: Record<string, unknown>): 
   return payload as T;
 }
 
-async function createLinkToken(env: Env): Promise<LinkTokenResponse> {
+async function createLinkToken(
+  env: Env,
+  redirectUri: string | null,
+): Promise<LinkTokenResponse> {
   // One connector serves one person, so the Plaid user id is a constant rather
   // than an account system this app deliberately doesn't have.
   const result = await plaid<{ link_token: string }>(env, '/link/token/create', {
@@ -139,6 +150,10 @@ async function createLinkToken(env: Env): Promise<LinkTokenResponse> {
     products: ['transactions'],
     country_codes: ['US'],
     language: 'en',
+    // Sent only when the app asked for it. Plaid rejects a redirect_uri that
+    // isn't registered, so an unregistered one must not break the far more
+    // common non-OAuth flow.
+    ...(redirectUri ? { redirect_uri: redirectUri } : {}),
   });
 
   return { linkToken: result.link_token };
