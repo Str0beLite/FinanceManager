@@ -35,6 +35,35 @@ jobs:
       - name: Build
         run: npm run build
 
+      # A build can succeed while producing something that renders blank once
+      # served from the Pages sub-path, so check the artifact before shipping it.
+      - name: Verify the built output is deployable
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+
+          # The built page must reference the bundle, not the TypeScript source.
+          if grep -q 'src="/src/main.tsx"' dist/index.html; then
+            echo "::error::dist/index.html still points at the TS source entry."
+            exit 1
+          fi
+
+          # Every asset must sit under the Pages base path and actually exist.
+          refs=$(grep -o '/FinanceManager/assets/[^"]*' dist/index.html || true)
+          if [ -z "$refs" ]; then
+            echo '::error::No /FinanceManager/assets/ references found — check base in vite.config.ts.'
+            exit 1
+          fi
+          for ref in $refs; do
+            path="dist/${ref#/FinanceManager/}"
+            if [ ! -f "$path" ]; then
+              echo "::error::index.html references $ref but $path is missing from the artifact."
+              exit 1
+            fi
+          done
+
+          echo "dist/ references $(echo "$refs" | wc -l) asset(s), all present."
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
