@@ -31,6 +31,12 @@ You need a [Plaid account](https://dashboard.plaid.com/signup) — sandbox keys
 are free and issued immediately — and a Cloudflare account. The free tier covers
 this comfortably.
 
+**One thing to do in the Cloudflare dashboard first:** claim a `workers.dev`
+subdomain, under **Workers & Pages**. It's free and takes a minute, but a Worker
+on an account without one has no URL to be served from, and it can't be claimed
+from a script because you have to choose the name. Both routes below fail
+without it.
+
 There are two routes. The first needs nothing installed on your machine.
 
 ### With GitHub Actions (recommended)
