@@ -1,6 +1,16 @@
 import { SCHEMA_VERSION, STORAGE_KEY } from '@/config/constants';
 import { DEFAULT_CURRENCY, DEFAULT_LOCALE } from '@/config/currency';
-import type { AppState } from '@/types';
+import type { AppState, BankState } from '@/types';
+
+export function createEmptyBankState(): BankState {
+  return {
+    connectorUrl: '',
+    connectorToken: '',
+    connections: [],
+    rules: [],
+    inbox: [],
+  };
+}
 
 export function createEmptyState(): AppState {
   return {
@@ -17,6 +27,7 @@ export function createEmptyState(): AppState {
       locale: DEFAULT_LOCALE,
       theme: 'system',
     },
+    bank: createEmptyBankState(),
   };
 }
 
@@ -26,8 +37,12 @@ export function createEmptyState(): AppState {
  */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   const state = { ...raw };
-  // v1 is the first released schema — nothing to migrate yet. New steps go here:
-  //   if ((state.version ?? 0) < 2) { ...; state.version = 2; }
+
+  // v2 added the `bank` section. A v1 save simply doesn't have one, which reads
+  // as "bank syncing was never set up" — exactly what the empty default below
+  // means — so there is no data to move, only a version to bump. New steps go
+  // here:  if ((state.version ?? 0) < 3) { ...; state.version = 3; }
+
   state.version = SCHEMA_VERSION;
   return state;
 }
@@ -64,6 +79,20 @@ export function parseState(input: unknown): AppState {
           ? settings.theme
           : fallback.settings.theme,
     },
+    bank: parseBank(raw.bank),
+  };
+}
+
+function parseBank(input: unknown): AppState['bank'] {
+  if (!isRecord(input)) return createEmptyBankState();
+  const fallback = createEmptyBankState();
+
+  return {
+    connectorUrl: asString(input.connectorUrl, fallback.connectorUrl),
+    connectorToken: asString(input.connectorToken, fallback.connectorToken),
+    connections: asArray(input.connections),
+    rules: asArray(input.rules),
+    inbox: asArray(input.inbox),
   };
 }
 
@@ -95,8 +124,22 @@ export function clearState(storage: Storage = localStorage): void {
   }
 }
 
+/**
+ * Strips the connector token out of a state about to leave the browser.
+ *
+ * A backup is a file people email to themselves and drop in cloud storage, and
+ * that token is a bearer credential for their bank transactions — it must not
+ * ride along in one. The connector URL is harmless on its own, since the
+ * connector rejects any request without the token, and re-entering it after a
+ * restore is a single paste.
+ */
+export function redactForExport(state: AppState): AppState {
+  return { ...state, bank: { ...state.bank, connectorToken: '' } };
+}
+
+/** Serialises for export, so redaction is not something a caller can forget. */
 export function serializeState(state: AppState): string {
-  return JSON.stringify(state, null, 2);
+  return JSON.stringify(redactForExport(state), null, 2);
 }
 
 export interface ImportResult {

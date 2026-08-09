@@ -1,3 +1,18 @@
+export type {
+  BankConnection,
+  BankRule,
+  BankState,
+  ConnectorError,
+  ExchangeResponse,
+  HealthResponse,
+  InboxReason,
+  IncomingTransaction,
+  LinkTokenResponse,
+  PendingImport,
+  PendingImportDraft,
+  PlaidEnvironment,
+  SyncResponse,
+} from './bank';
 export type { AllocationType, Category, CategoryDraft } from './category';
 export type { IncomeDraft, IncomeEntry } from './income';
 export type {

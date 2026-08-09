@@ -7,3 +7,7 @@ dist-ssr
 coverage
 *.log
 *.tsbuildinfo
+
+# Wrangler's local state for the connector in server/
+.wrangler
+.dev.vars

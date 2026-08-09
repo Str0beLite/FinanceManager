@@ -14,7 +14,7 @@ export const STORAGE_KEY = IS_BETA ? 'finance-manager:state:beta' : 'finance-man
  * Bump this whenever the persisted shape changes, and add a matching step to
  * `migrate()` in src/lib/storage.ts so existing saves keep working.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** Filename stem used when exporting a backup. */
 export const EXPORT_FILENAME_PREFIX = 'finance-manager-backup';

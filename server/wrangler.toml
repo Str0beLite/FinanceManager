@@ -1,0 +1,23 @@
+name = "finance-manager-connector"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# Holds one Plaid access token per linked bank. Create it once with:
+#   wrangler kv namespace create BANK_KV
+# then paste the id it prints in below.
+[[kv_namespaces]]
+binding = "BANK_KV"
+id = "replace-with-your-kv-namespace-id"
+
+[vars]
+# "sandbox" until you have production access from Plaid. Sandbox is free and
+# instant, and returns fake transactions from a fake bank.
+PLAID_ENV = "sandbox"
+
+# The exact origin your app is served from — no trailing slash, no wildcard.
+# For local development against `npm run dev`, use "http://localhost:5173".
+ALLOWED_ORIGIN = "https://YOUR-USERNAME.github.io"
+
+# PLAID_CLIENT_ID, PLAID_SECRET and APP_TOKEN are secrets, not vars. They are
+# set with `wrangler secret put` and deliberately do not appear in this file,
+# which is committed to the repository.

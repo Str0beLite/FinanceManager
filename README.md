@@ -4,7 +4,12 @@ A per-month budgeting app. You set a monthly paycheck, split it across categorie
 track subscriptions and one-off spending, then close the month — anything unspent
 becomes savings, anything overspent is taken out of next month's budget.
 
-Everything is stored in your browser. No account, no server, no data leaving your machine.
+Everything is stored in your browser. No account, no sign-up, nothing sent anywhere.
+
+The one exception is optional: [bank syncing](#bank-syncing) can pull your expenses in
+automatically, and that needs a small connector running on your own Cloudflare account,
+because Plaid cannot be called from a browser. Leave it alone and the app never makes a
+network request at all.
 
 ## How the money works
 
@@ -154,6 +159,60 @@ offers a reload rather than silently sitting on the old build.
 - Safe-area insets for notch and home indicator, and every tap target is at
   least 40px tall.
 
+## Bank syncing
+
+Optional, off until you set it up. Once it is running, expenses that have cleared your
+bank are already counted against the right categories by the time you open the app.
+
+### Why this one needs a server
+
+Plaid signs every request with a `client_id`/`secret` pair, sends no CORS headers for
+browser origins, and forbids the per-bank access token from reaching client code. A
+`VITE_` variable would not help — those are compiled into the JavaScript bundle, where
+anyone can read them.
+
+So the secrets go somewhere you own instead: a single Cloudflare Worker in
+[`server/`](server/README.md), which you deploy with your own Plaid keys. The app talks
+only to that Worker; the Worker talks to Plaid. The access token stays in your Worker's
+KV and never comes back to the browser. `server/README.md` has the five commands.
+
+Sandbox keys are free and issued immediately, which is enough to try the whole thing
+end to end against Plaid's fake bank.
+
+### How a charge becomes an expense
+
+1. A sync runs when the app comes to the foreground, at most every 15 minutes, plus a
+   **Sync now** button in Settings. A static site can't receive Plaid's webhooks, so this
+   is what "automatic" means here.
+2. Charges matching a **filing rule** (`whole foods` → Groceries) become expenses
+   immediately.
+3. Everything else waits in a **review inbox** at the top of the Expenses tab. Picking a
+   category files it, and offers to remember the merchant so the next one files itself.
+   The rule text is editable, because `SQ *BLUE BOTTLE 4417` is not something worth
+   matching on twice.
+
+Some deliberate rules, all covered by tests in `tests/bank.test.ts`:
+
+- **Refunds and deposits are ignored.** Plaid's amount is positive when money leaves the
+  account; this app only models spending, so credits have nowhere to go. They're counted
+  and reported, not silently dropped.
+- **A pending charge that posts is updated, not duplicated.** The bank issues a new id
+  when it finalises the amount, so the old one is matched and amended in place — the
+  category you already picked survives.
+- **A charge dated in a closed month goes to the inbox**, whatever the rules say. Closed
+  months render from a frozen snapshot, so filing into one would count for nothing and
+  appear nowhere.
+- **Nothing imports twice.** Every synced expense carries its bank id, and the sync cursor
+  only advances once a whole batch has been applied — so a failure halfway re-fetches
+  rather than skips.
+
+Disconnecting a bank unlinks it at Plaid and deletes the stored token. Expenses already
+imported are your own records by then, so they stay.
+
+**The connector token is stripped from exported backups.** A backup is a file that gets
+emailed around, and that token is a bearer credential for your bank data. Re-enter it
+after restoring.
+
 ## Backups
 
 Your data lives in this browser's `localStorage` under one key. Clearing site data
@@ -173,6 +232,7 @@ src/
   features/     One folder per screen, each self-contained
   app/          Shell, layout, and the nav array that drives routing
 tests/          Vitest suite for the engine
+server/         The Plaid connector. Deployed separately; see its own README.
 ```
 
 Two rules keep it easy to change:
@@ -183,6 +243,12 @@ Two rules keep it easy to change:
    cent-exact rounding.
 2. **`computeMonth()` is the only place money is calculated.** Components render
    what it returns; none of them do arithmetic of their own.
+
+Bank syncing follows both. The rules that decide what a charge becomes — dedupe,
+pending-to-posted, credits, closed months — are pure functions in `lib/bank.ts` with
+their own tests, and the only `fetch` in the app is `lib/connector.ts`. `features/bank/`
+is the one feature that isn't a screen: it mounts a card into Settings and the review
+inbox into Expenses, rather than claiming a fifth tab.
 
 Adding a screen means adding a folder under `features/` and one entry in
 `src/app/navigation.ts` — that array drives the nav bar, which page renders, and

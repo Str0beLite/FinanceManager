@@ -1,11 +1,15 @@
 import {
   faArrowDown,
   faArrowUp,
+  faArrowsRotate,
+  faBuildingColumns,
   faCalendarDays,
   faChartPie,
+  faCheck,
   faChevronLeft,
   faChevronRight,
   faGear,
+  faInbox,
   faLock,
   faPlus,
   faReceipt,
@@ -13,6 +17,7 @@ import {
   faSliders,
   faTableCellsLarge,
   faWallet,
+  faXmark,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -38,9 +43,14 @@ export const ICONS = {
   subscriptions: faRotate,
   hardSet: faLock,
   closed: faLock,
+  bank: faBuildingColumns,
+  inbox: faInbox,
 
   // Controls
   add: faPlus,
+  sync: faArrowsRotate,
+  approve: faCheck,
+  dismiss: faXmark,
   moveUp: faArrowUp,
   moveDown: faArrowDown,
   previous: faChevronLeft,
