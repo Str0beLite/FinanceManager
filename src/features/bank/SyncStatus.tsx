@@ -29,6 +29,17 @@ export default function SyncStatus() {
                 {summary.skippedOld > 0 &&
                   `, ${summary.skippedOld} from before you connected ignored`}
                 .
+                {/* A split charge is several expenses of your own by then, so
+                    the bank's new figure is not applied over them. Said out
+                    loud, because a silent difference is one nobody finds. */}
+                {summary.splitChanged > 0 && (
+                  <>
+                    {' '}
+                    {summary.splitChanged} split{' '}
+                    {summary.splitChanged === 1 ? 'charge has' : 'charges have'} changed at
+                    the bank — the parts were left as you filed them.
+                  </>
+                )}
               </>
             )}
           </span>

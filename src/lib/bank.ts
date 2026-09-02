@@ -79,38 +79,6 @@ export function evenSplit(totalCents: number, count: number): number[] {
   return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0));
 }
 
-/**
- * `amounts` rescaled to add up to `total`, keeping their proportions.
- *
- * This is what happens to a split charge when the bank corrects it — a tip
- * added after the card was swiped. The parts keep their shape, and the cents
- * rounding drops go to whichever parts came closest to earning them, so the
- * total still lands exactly on the amount the bank charged.
- */
-export function rescale(amounts: readonly number[], total: number): number[] {
-  if (amounts.length === 0) return [];
-  if (amounts.length === 1) return [total];
-
-  const previous = amounts.reduce((sum, amount) => sum + amount, 0);
-  if (previous <= 0) return evenSplit(total, amounts.length);
-
-  const exact = amounts.map((amount) => (amount * total) / previous);
-  const shares = exact.map(Math.floor);
-  let left = total - shares.reduce((sum, share) => sum + share, 0);
-
-  const byRemainder = exact
-    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
-    .sort((a, b) => b.fraction - a.fraction);
-
-  for (const { index } of byRemainder) {
-    if (left <= 0) break;
-    shares[index] += 1;
-    left -= 1;
-  }
-
-  return shares;
-}
-
 /** Why a split cannot be filed yet. The wording is the UI's business, not this file's. */
 export type SplitProblem =
   | { readonly kind: 'too-few' }
@@ -165,6 +133,11 @@ export interface IngestPlan {
   readonly skippedCredits: number;
   /** History from before the connection's `importFrom`. Also reported, not hidden. */
   readonly skippedOld: number;
+  /**
+   * Charges the bank has changed since they were split into separate expenses.
+   * Left alone on purpose, and surfaced so the change isn't invisible.
+   */
+  readonly splitChanged: number;
   /** Charges already imported. Expected on every sync — the cursor overlaps. */
   readonly duplicates: number;
 }
@@ -184,15 +157,13 @@ export interface ClassifyInput {
 /** Where a charge already known to the app currently lives. */
 interface KnownRef {
   kind: 'transaction' | 'inbox';
-  /**
-   * The rows this one charge became. More than one means it was split across
-   * categories, and an amendment has to be shared out rather than written to
-   * whichever row happened to be found first.
-   */
-  parts: { id: string; amountCents: number }[];
-  /** The charge as a whole, which is what the bank will send again. */
+  /** The row to amend when the bank changes it. Not used once `split`. */
+  id: string;
+  /** The charge as a whole — the sum of every row it became. */
   amountCents: number;
   date: string;
+  /** Filed as several expenses, which the bank no longer gets to rewrite. */
+  split: boolean;
 }
 
 export function classifyIncoming({
@@ -210,24 +181,29 @@ export function classifyIncoming({
     if (!transaction.externalId) continue;
     const known = index.get(transaction.externalId);
     if (known) {
-      known.parts.push({ id: transaction.id, amountCents: transaction.amountCents });
+      // A second row under one bank id can only be a split, whatever the rows
+      // themselves claim — so this holds for a save written before the mark
+      // existed, and for one whose other half has since been deleted.
       known.amountCents += transaction.amountCents;
+      known.split = true;
       continue;
     }
     index.set(transaction.externalId, {
       kind: 'transaction',
-      parts: [{ id: transaction.id, amountCents: transaction.amountCents }],
+      id: transaction.id,
       amountCents: transaction.amountCents,
       date: transaction.date,
+      split: transaction.split === true,
     });
   }
 
   for (const row of inbox) {
     index.set(row.externalId, {
       kind: 'inbox',
-      parts: [{ id: row.id, amountCents: row.amountCents }],
+      id: row.id,
       amountCents: row.amountCents,
       date: row.date,
+      split: false,
     });
   }
 
@@ -247,6 +223,7 @@ export function classifyIncoming({
   const claimed = new Set<string>();
   let skippedCredits = 0;
   let skippedOld = 0;
+  let splitChanged = 0;
   let duplicates = 0;
 
   for (const item of incoming) {
@@ -281,28 +258,27 @@ export function classifyIncoming({
         continue;
       }
 
-      // A pending charge that posted, or one the bank corrected. Update it in
-      // place so the category the user already picked survives the change — and
-      // when it was split, share the new amount out in the proportions they set.
+      // A charge that was split stopped being one bill the moment it was split.
+      // Its shares are ordinary expenses now — edited, deleted, budgeted around
+      // — and there is no way to push a new figure into them without
+      // overwriting a decision somebody made by hand. Reported, not applied.
+      if (known.split) {
+        splitChanged += 1;
+        known.amountCents = amountCents;
+        known.date = item.date;
+        continue;
+      }
+
+      // A pending charge that posted, or one the bank corrected. Updated in
+      // place so the category already picked for it survives the change.
       if (known.kind === 'transaction') {
-        const shares = rescale(
-          known.parts.map((part) => part.amountCents),
-          amountCents,
-        );
-        known.parts = known.parts.map((part, position) => {
-          updated.push({
-            id: part.id,
-            changes: {
-              amountCents: shares[position],
-              date: item.date,
-              externalId: item.externalId,
-            },
-          });
-          return { ...part, amountCents: shares[position] };
+        updated.push({
+          id: known.id,
+          changes: { amountCents, date: item.date, externalId: item.externalId },
         });
       } else {
         inboxUpdated.push({
-          id: known.parts[0].id,
+          id: known.id,
           changes: {
             amountCents,
             date: item.date,
@@ -310,7 +286,6 @@ export function classifyIncoming({
             pending: item.pending,
           },
         });
-        known.parts = [{ id: known.parts[0].id, amountCents }];
       }
 
       known.amountCents = amountCents;
@@ -361,7 +336,16 @@ export function classifyIncoming({
     });
   }
 
-  return { added, updated, inboxAdded, inboxUpdated, skippedCredits, skippedOld, duplicates };
+  return {
+    added,
+    updated,
+    inboxAdded,
+    inboxUpdated,
+    skippedCredits,
+    skippedOld,
+    splitChanged,
+    duplicates,
+  };
 }
 
 /** Drops charges the bank has retracted, wherever they ended up. */

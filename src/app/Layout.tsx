@@ -73,7 +73,14 @@ export default function Layout({ activePage, onNavigate, children }: LayoutProps
               <p className="text-content-muted text-[10px] font-medium tracking-wide uppercase">
                 Pool
               </p>
-              <p className="text-brand text-sm font-semibold tabular-nums">
+              {/* Expenses can be paid straight from savings, so this can go
+                  under water. Say so in the colour rather than showing a
+                  minus sign the same shade as a healthy balance. */}
+              <p
+                className={`text-sm font-semibold tabular-nums ${
+                  rolloverPoolCents < 0 ? 'text-danger' : 'text-brand'
+                }`}
+              >
                 {format(rolloverPoolCents)}
               </p>
             </div>

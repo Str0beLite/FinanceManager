@@ -6,7 +6,6 @@ import {
   evenSplit,
   matchRule,
   normalizeMerchant,
-  rescale,
   shouldAutoSync,
   validateSplit,
   type ClassifyInput,
@@ -372,25 +371,6 @@ describe('evenSplit', () => {
   });
 });
 
-describe('rescale', () => {
-  it('keeps the proportions of a split when the amount moves', () => {
-    expect(rescale([750, 250], 2000)).toEqual([1500, 500]);
-  });
-
-  it('lands on the new total exactly, however the cents fall', () => {
-    const parts = rescale([333, 333, 334], 1001);
-    expect(parts.reduce((sum, part) => sum + part, 0)).toBe(1001);
-  });
-
-  it('hands the whole amount over when there is only one part', () => {
-    expect(rescale([475], 575)).toEqual([575]);
-  });
-
-  it('falls back to an even split when there is no shape to keep', () => {
-    expect(rescale([0, 0], 501)).toEqual([251, 250]);
-  });
-});
-
 describe('validateSplit', () => {
   const part = (categoryId: string, amountCents: number) => ({ categoryId, amountCents });
 
@@ -432,6 +412,7 @@ describe('a charge that was split across categories', () => {
       ...transaction(`cat-${index}`, amount / 100, '2026-08-12'),
       id: `row-${index}`,
       externalId,
+      split: true,
     }));
   }
 
@@ -446,18 +427,56 @@ describe('a charge that was split across categories', () => {
     expect(plan.updated).toEqual([]);
   });
 
-  it('shares an amendment out instead of writing it to one part', () => {
-    // The tip landed after the card was swiped: $10.00 became $12.00, and each
-    // category should carry its share of the extra rather than one carrying all.
+  it('is left alone when the bank changes it, and the change is reported', () => {
+    // $10.00 became $12.00 at the bank. The parts are two ordinary expenses by
+    // now — possibly edited, possibly one of them deleted — so writing a new
+    // figure into them would overwrite decisions somebody made by hand.
     const plan = classify({
       incoming: [incoming({ externalId: 'a', amount: 12 })],
       transactions: splitCharge('a', 750, 250),
     });
 
+    expect(plan.updated).toEqual([]);
+    expect(plan.added).toEqual([]);
+    expect(plan.inboxAdded).toEqual([]);
+    expect(plan.splitChanged).toBe(1);
+  });
+
+  it('still amends an unsplit charge, where there is one row and no judgement in it', () => {
+    const plan = classify({
+      incoming: [incoming({ externalId: 'a', amount: 12 })],
+      transactions: splitCharge('a', 1000).map(({ split: _split, ...row }) => row),
+    });
+
+    expect(plan.splitChanged).toBe(0);
     expect(plan.updated).toEqual([
-      { id: 'row-0', changes: { amountCents: 900, date: '2026-08-12', externalId: 'a' } },
-      { id: 'row-1', changes: { amountCents: 300, date: '2026-08-12', externalId: 'a' } },
+      { id: 'row-0', changes: { amountCents: 1200, date: '2026-08-12', externalId: 'a' } },
     ]);
+  });
+
+  it('stays untouched even once only one share of it is left', () => {
+    // The other half was deleted by hand. Without the mark this would look like
+    // an ordinary charge that had drifted, and the bank would quietly restore
+    // the deleted money to the surviving row.
+    const plan = classify({
+      incoming: [incoming({ externalId: 'a', amount: 10 })],
+      transactions: splitCharge('a', 600, 400).slice(0, 1),
+    });
+
+    expect(plan.updated).toEqual([]);
+    expect(plan.added).toEqual([]);
+    expect(plan.inboxAdded).toEqual([]);
+    expect(plan.splitChanged).toBe(1);
+  });
+
+  it('recognises a split written before the mark existed, by there being two of them', () => {
+    const plan = classify({
+      incoming: [incoming({ externalId: 'a', amount: 12 })],
+      transactions: splitCharge('a', 600, 400).map(({ split: _split, ...row }) => row),
+    });
+
+    expect(plan.updated).toEqual([]);
+    expect(plan.splitChanged).toBe(1);
   });
 
   it('is retracted whole when the bank takes the charge back', () => {

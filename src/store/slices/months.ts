@@ -91,6 +91,10 @@ function reopenMonth(state: AppState, key: string): AppState {
  */
 function applyPool(state: AppState, key: string, amountCents: number): AppState {
   const record = getMonthRecord(state, key);
+  // `rolloverPoolCents` in this `Math.min` is not redundant, and is what makes
+  // an overdrawn pool safe: expenses paid from savings can take it negative,
+  // and a negative here yields an amount of zero or less, so the whole thing
+  // returns untouched rather than paying a deficit with money that isn't there.
   const amount = Math.min(amountCents, state.rolloverPoolCents, record.deficitInCents);
   if (amount <= 0) return state;
 

@@ -289,3 +289,97 @@ describe('end-to-end month chain', () => {
     expect(find(april, 'Fun').budgetCents).toBe(60_000);
   });
 });
+
+describe('an expense paid from the rollover pool', () => {
+  const pooled = (categoryId: string, dollars: number) => ({
+    ...transaction(categoryId, dollars, `${MONTH}-14`),
+    fromPool: true,
+  });
+
+  it('funds its own category, so the month has the same money left as before', () => {
+    const repairs = percentCategory('Repairs', 50);
+    const groceries = percentCategory('Groceries', 50);
+    const categories = [repairs, groceries];
+
+    const without = compute({ categories, paycheckCents: 200_000 });
+    const withPooled = compute({
+      categories,
+      paycheckCents: 200_000,
+      transactions: [pooled(repairs.id, 600)],
+    });
+
+    const row = find(withPooled, 'Repairs');
+    expect(row.pooledCents).toBe(60_000);
+    // Spending, and spending here — only the funding came from elsewhere.
+    expect(row.transactionCents).toBe(60_000);
+    expect(row.spentCents).toBe(60_000);
+    // Budget up by exactly the same, so nothing is left over or short.
+    expect(row.budgetCents).toBe(find(without, 'Repairs').budgetCents + 60_000);
+    expect(row.remainingCents).toBe(find(without, 'Repairs').remainingCents);
+
+    expect(withPooled.totalPooledCents).toBe(60_000);
+    expect(withPooled.totalRemainingCents).toBe(without.totalRemainingCents);
+  });
+
+  it('leaves the settlement untouched — no surplus banked, no deficit handed on', () => {
+    const repairs = percentCategory('Repairs', 100);
+    const categories = [repairs];
+
+    const without = settleMonth(compute({ categories, paycheckCents: 100_000 }));
+    const withPooled = settleMonth(
+      compute({
+        categories,
+        paycheckCents: 100_000,
+        transactions: [pooled(repairs.id, 600)],
+      }),
+    );
+
+    // This is the whole point: the pool pays once, at the moment the expense is
+    // saved. A month that also banked or clawed back the same money would be
+    // spending it twice.
+    expect(withPooled).toEqual(without);
+  });
+
+  it('does not enlarge the category’s share of a rollover deficit', () => {
+    const repairs = percentCategory('Repairs', 50);
+    const groceries = percentCategory('Groceries', 50);
+    const categories = [repairs, groceries];
+    const shared = { categories, paycheckCents: 200_000, deficitInCents: 40_000 };
+
+    const without = compute(shared);
+    const withPooled = compute({ ...shared, transactions: [pooled(repairs.id, 600)] });
+
+    // Money earmarked from savings is not capacity to absorb somebody else's
+    // overspend, so the cut is shared out exactly as it was.
+    expect(find(withPooled, 'Repairs').cutCents).toBe(find(without, 'Repairs').cutCents);
+    expect(find(withPooled, 'Groceries').cutCents).toBe(find(without, 'Groceries').cutCents);
+    expect(withPooled.deficitAppliedCents).toBe(without.deficitAppliedCents);
+  });
+
+  it('still leaves a hard-set category uncut when it is holding pooled money', () => {
+    const rent = fixedCategory('Rent', 1400, { hardSet: true });
+    const fun = percentCategory('Fun', 100);
+
+    const result = compute({
+      categories: [rent, fun],
+      paycheckCents: 300_000,
+      deficitInCents: 50_000,
+      transactions: [pooled(rent.id, 600)],
+    });
+
+    expect(find(result, 'Rent').cutCents).toBe(0);
+    expect(find(result, 'Rent').budgetCents).toBe(140_000 + 60_000);
+  });
+
+  it('reports nothing pooled when nothing was', () => {
+    const fun = percentCategory('Fun', 100);
+    const result = compute({
+      categories: [fun],
+      paycheckCents: 100_000,
+      transactions: [transaction(fun.id, 20, `${MONTH}-04`)],
+    });
+
+    expect(result.totalPooledCents).toBe(0);
+    expect(find(result, 'Fun').pooledCents).toBe(0);
+  });
+});
