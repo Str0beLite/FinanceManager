@@ -94,6 +94,10 @@ export function computeMonth(input: ComputeMonthInput): MonthComputation {
 
   const totalBudgetCents = sumBy(computedCategories, (c) => c.budgetCents);
   const totalSpentCents = sumBy(computedCategories, (c) => c.spentCents);
+  // Pooled money sits in both totals, so it cancels out of `totalRemaining` —
+  // which is what stops a month drawing on savings *and* handing the same
+  // spending forward as a deficit. `settleMonth` needs to know nothing about it.
+  const totalPooledCents = sumBy(computedCategories, (c) => c.pooledCents);
 
   return {
     monthKey,
@@ -109,6 +113,7 @@ export function computeMonth(input: ComputeMonthInput): MonthComputation {
     categories: computedCategories,
     totalBudgetCents,
     totalSpentCents,
+    totalPooledCents,
     totalRemainingCents: totalBudgetCents - totalSpentCents,
   };
 }
@@ -136,6 +141,8 @@ export function settleMonth(computation: MonthComputation): Settlement {
 interface Spending {
   subscriptionCents: number;
   transactionCents: number;
+  /** The part of `transactionCents` that came out of the rollover pool. */
+  pooledCents: number;
 }
 
 function tallySpending(
@@ -146,7 +153,7 @@ function tallySpending(
   const bucket = (categoryId: string): Spending => {
     const existing = totals.get(categoryId);
     if (existing) return existing;
-    const created = { subscriptionCents: 0, transactionCents: 0 };
+    const created = { subscriptionCents: 0, transactionCents: 0, pooledCents: 0 };
     totals.set(categoryId, created);
     return created;
   };
@@ -157,7 +164,12 @@ function tallySpending(
     bucket(s.categoryId).subscriptionCents += s.amountCents;
   });
   monthTransactions.forEach((t) => {
-    bucket(t.categoryId).transactionCents += t.amountCents;
+    const spending = bucket(t.categoryId);
+    // Money from savings is still spending, and still spending *here* — the
+    // difference is only where the funding came from, which is recorded
+    // alongside so the category's budget can be topped up to match.
+    spending.transactionCents += t.amountCents;
+    if (t.fromPool) spending.pooledCents += t.amountCents;
   });
 
   return totals;
@@ -199,7 +211,11 @@ function buildCategoryComputation(
   cutCents: number,
   spending: Spending | undefined,
 ): CategoryComputation {
-  const budgetCents = Math.max(0, baseCents - cutCents);
+  const pooledCents = spending?.pooledCents ?? 0;
+  // Added *after* the deficit cut, never before. `applyDeficit` shares a
+  // deficit out in proportion to `baseCents`, and money earmarked from savings
+  // must not enlarge a category's capacity to absorb somebody else's overspend.
+  const budgetCents = Math.max(0, baseCents - cutCents) + pooledCents;
   const subscriptionCents = spending?.subscriptionCents ?? 0;
   const transactionCents = spending?.transactionCents ?? 0;
   const spentCents = subscriptionCents + transactionCents;
@@ -213,6 +229,7 @@ function buildCategoryComputation(
     baseCents,
     cutCents,
     budgetCents,
+    pooledCents,
     subscriptionCents,
     transactionCents,
     spentCents,

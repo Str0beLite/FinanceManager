@@ -35,9 +35,11 @@ export default function MonthStats({
         label="Budgeted"
         value={format(computation.totalBudgetCents)}
         hint={
-          computation.deficitAppliedCents > 0
-            ? `After a ${format(computation.deficitAppliedCents)} rollover cut`
-            : 'Across all categories'
+          computation.totalPooledCents > 0
+            ? `Includes ${format(computation.totalPooledCents)} funded from savings`
+            : computation.deficitAppliedCents > 0
+              ? `After a ${format(computation.deficitAppliedCents)} rollover cut`
+              : 'Across all categories'
         }
         tone={computation.deficitAppliedCents > 0 ? 'warning' : 'neutral'}
       />
@@ -50,8 +52,12 @@ export default function MonthStats({
       <StatTile
         label="Rollover pool"
         value={format(poolCents)}
-        hint="Savings from months that came in under"
-        tone="brand"
+        hint={
+          poolCents < 0
+            ? 'Overdrawn — the next month that comes in under will refill it'
+            : 'Savings from months that came in under'
+        }
+        tone={poolCents < 0 ? 'danger' : 'brand'}
         action={
           !isClosed && (
             <Button

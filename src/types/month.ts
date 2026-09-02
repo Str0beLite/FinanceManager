@@ -11,7 +11,12 @@ export interface CategoryComputation {
   readonly baseCents: number;
   /** How much of the deficit this category absorbed. Always 0 when hard set. */
   readonly cutCents: number;
-  /** `baseCents - cutCents`, never below zero. */
+  /**
+   * Spending here that was paid out of the rollover pool, which is added to
+   * `budgetCents` so the month's own money is untouched by it.
+   */
+  readonly pooledCents: number;
+  /** `max(0, baseCents - cutCents) + pooledCents`. */
   readonly budgetCents: number;
   readonly subscriptionCents: number;
   readonly transactionCents: number;
@@ -43,6 +48,12 @@ export interface MonthComputation {
   readonly categories: readonly CategoryComputation[];
   readonly totalBudgetCents: number;
   readonly totalSpentCents: number;
+  /**
+   * How much of this month's spending came out of the pool. Counted into both
+   * the budget and the spend, so it cancels out of `totalRemainingCents` and
+   * the month settles as if it had never happened.
+   */
+  readonly totalPooledCents: number;
   /** `totalBudget - totalSpent`. Positive is savings, negative is overspend. */
   readonly totalRemainingCents: number;
 }

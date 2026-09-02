@@ -55,6 +55,12 @@ export default function MonthHero({
             · {format(computation.deficitAppliedCents)} rollover cut
           </span>
         )}
+        {computation.totalPooledCents > 0 && (
+          <span className="text-brand">
+            {' '}
+            · {format(computation.totalPooledCents)} from savings
+          </span>
+        )}
       </p>
 
       <AllocationBar
@@ -79,7 +85,13 @@ export default function MonthHero({
           <p className="text-content-muted text-[10px] font-medium tracking-wide uppercase">
             Pool
           </p>
-          <p className="text-brand text-sm font-semibold tabular-nums">{format(poolCents)}</p>
+          <p
+            className={`text-sm font-semibold tabular-nums ${
+              poolCents < 0 ? 'text-danger' : 'text-brand'
+            }`}
+          >
+            {format(poolCents)}
+          </p>
         </div>
         {!isClosed && (
           <Button
