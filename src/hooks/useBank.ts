@@ -165,8 +165,8 @@ export function useInbox() {
   const { inbox } = state.bank;
 
   const approve = useCallback(
-    (importId: string, categoryId: string, ruleMatch?: string) =>
-      dispatch({ type: 'bank/approve', importId, categoryId, ruleMatch }),
+    (importId: string, categoryId: string, ruleMatch?: string, fromPool?: boolean) =>
+      dispatch({ type: 'bank/approve', importId, categoryId, ruleMatch, fromPool }),
     [dispatch],
   );
 

@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Button, FormField, MoneyInput, Select, inputClasses } from '@/components/ui';
+import { Button, FormField, MoneyInput, Select, Toggle, inputClasses } from '@/components/ui';
+import { useAppState } from '@/hooks/useApp';
 import { useActiveCategories } from '@/hooks/useCategories';
+import { useMoney } from '@/hooks/useMoney';
 import { useSplit } from '@/hooks/useSplit';
 import { todayIsoDate } from '@/lib/dates';
 import { validatePositiveAmount } from '@/lib/validation';
@@ -29,6 +31,8 @@ export default function TransactionForm({
   onCancel,
 }: TransactionFormProps) {
   const categories = useActiveCategories();
+  const { rolloverPoolCents } = useAppState();
+  const { format } = useMoney();
   const [categoryId, setCategoryId] = useState(
     initial?.categoryId ?? defaultCategoryId ?? categories[0]?.id ?? '',
   );
@@ -37,6 +41,7 @@ export default function TransactionForm({
   const [note, setNote] = useState(initial?.note ?? '');
   const [submitted, setSubmitted] = useState(false);
   const [splitting, setSplitting] = useState(false);
+  const [fromPool, setFromPool] = useState(initial?.fromPool ?? false);
 
   const split = useSplit(amountCents);
 
@@ -66,7 +71,11 @@ export default function TransactionForm({
     }
 
     if (!categoryId) return;
-    onSubmit([{ categoryId, amountCents, date, note: note.trim() }]);
+    const draft: TransactionDraft = { categoryId, amountCents, date, note: note.trim() };
+    // Carried only when it means something — but an edit that turns it *off*
+    // has to say so out loud, because the reducer merges changes over the old
+    // row and an absent key would leave the expense still drawing on savings.
+    onSubmit([fromPool || initial?.fromPool ? { ...draft, fromPool } : draft]);
   };
 
   return (
@@ -104,9 +113,23 @@ export default function TransactionForm({
         </FormField>
       )}
 
+      {/* Splitting and paying from savings are exclusive: a share of a split
+          has no funding source of its own, so offering both at once would
+          promise something that does not exist. */}
+      {!splitting && (
+        <Toggle
+          checked={fromPool}
+          onChange={setFromPool}
+          label="Pay from savings"
+          description={`Comes out of the pool instead of this month's budget. ${format(
+            rolloverPoolCents,
+          )} in there.`}
+        />
+      )}
+
       {/* Amount first, then how to file it: a split is a decision about money
           that has already been named, and the editor needs the amount to halve. */}
-      {canSplit && (
+      {canSplit && !fromPool && (
         <button
           type="button"
           onClick={() => setSplitting(!splitting)}

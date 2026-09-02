@@ -93,6 +93,7 @@ export default function TransactionsPage() {
         <span className="text-content-muted flex items-center gap-1.5">
           <span className="truncate">{t.note || '—'}</span>
           {t.split && <Badge>Split</Badge>}
+          {t.fromPool && <Badge tone="brand">Savings</Badge>}
         </span>
       ),
     },

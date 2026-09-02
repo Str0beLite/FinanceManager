@@ -7,6 +7,7 @@ import {
 } from '@/lib/bank';
 import { monthKeyOf } from '@/lib/dates';
 import { createId } from '@/lib/id';
+import { settlePool } from '@/lib/pool';
 import type { AppState, BankRule, PendingImport, Transaction } from '@/types';
 
 export type BankAction =
@@ -27,6 +28,8 @@ export type BankAction =
       categoryId: string;
       /** When set, a rule is created so the next charge like this files itself. */
       ruleMatch?: string;
+      /** Paid out of savings rather than out of the month's budget. */
+      fromPool?: boolean;
     }
   | {
       type: 'bank/split';
@@ -131,9 +134,14 @@ function applySync(
     id: createId(),
   }));
 
+  const transactions = [...amended, ...added];
+
   return {
     ...state,
-    transactions: [...amended, ...added],
+    transactions,
+    // The bank can shrink a pool-funded charge or retract it outright, and
+    // either way the money has to find its way back to savings.
+    rolloverPoolCents: settlePool(state.rolloverPoolCents, state.transactions, transactions),
     bank: {
       ...state.bank,
       inbox: [...amendedInbox, ...newInbox],
@@ -161,14 +169,21 @@ function approve(
     date: row.date,
     note: row.merchant,
     externalId: row.externalId,
+    ...(action.fromPool ? { fromPool: true } : {}),
   };
+
+  const transactions = [...state.transactions, transaction];
 
   return {
     ...state,
-    transactions: [...state.transactions, transaction],
+    transactions,
+    rolloverPoolCents: settlePool(state.rolloverPoolCents, state.transactions, transactions),
     bank: {
       ...state.bank,
       inbox: state.bank.inbox.filter((entry) => entry.id !== action.importId),
+      // A rule remembers a category and nothing else. Paying out of savings is
+      // a judgement about one charge, the same way a split is, so it is never
+      // learned from — the next charge from this merchant files normally.
       rules: action.ruleMatch
         ? addRule(state.bank.rules, action.ruleMatch, action.categoryId)
         : state.bank.rules,

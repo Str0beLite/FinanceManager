@@ -52,8 +52,9 @@ purchase and there is no way to push a new figure into it without overwriting th
 
 - Came in **under**? The surplus is added to your **rollover pool**.
 - Came in **over**? That amount is deducted from next month's budget. The pool is
-  left alone — savings only shrink if you deliberately spend them, via the
-  "Pay from savings" button on the deficit banner.
+  left alone — savings never shrink on their own. There are exactly two ways to spend
+  them, and both are things you choose: the "Pay from savings" button on the deficit
+  banner, and [an individual expense](#paying-an-expense-from-savings).
 
 **Hard-set categories.** A deficit is spread across your flexible categories in
 proportion to their size. Categories marked **hard set** are skipped entirely and
@@ -62,6 +63,30 @@ dining last month.
 
 If the flexible categories can't absorb the whole deficit — they all hit zero — the
 remainder carries into the month after rather than disappearing.
+
+### Paying an expense from savings
+
+A $600 car repair should not eat this month's groceries and then cascade into next month
+as a deficit. Any expense can be marked **Pay from savings** — on the add/edit form, or on
+a row in the bank review inbox — and it comes out of the rollover pool instead.
+
+The expense is still spending, and still spending in its own category. What changes is that
+the same amount is added to that category's budget for the month, so:
+
+- **left to spend does not move**, and neither does anything the month hands forward — the
+  pool pays for it once, and only once
+- the spending shows up where it happened, so History and the category totals still say
+  what really went through Repairs that month
+- the pool itself goes down the moment the expense is saved, so the figure in the header is
+  always true. Edit the amount, switch it back to ordinary spending, or delete it, and the
+  pool follows exactly
+
+**Savings can be overdrawn.** Paying $600 from a $400 pool leaves it at −$200, shown in red,
+and the next month that comes in under refills it. The deficit banner's own "Pay from
+savings" button stays hidden while the pool is empty or under water.
+
+Splitting and paying from savings are exclusive: a share of a split has no funding source of
+its own.
 
 Closed months are frozen: their numbers are snapshotted, so editing a category later
 never rewrites history. You can reopen the most recently closed month to correct it.

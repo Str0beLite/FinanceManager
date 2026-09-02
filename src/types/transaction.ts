@@ -23,6 +23,16 @@ export interface Transaction {
    * them without overwriting it. Absent on everything else.
    */
   readonly split?: boolean;
+  /**
+   * Paid out of the rollover pool rather than out of this month's budget.
+   *
+   * It is still spending, and still belongs to its category — but the same
+   * amount is added to that category's budget for the month, so the month's
+   * "left to spend" does not move and the charge cannot also be handed to next
+   * month as a deficit. The pool is what actually goes down, once, when the
+   * expense is saved.
+   */
+  readonly fromPool?: boolean;
 }
 
 export type TransactionDraft = Omit<Transaction, 'id'>;

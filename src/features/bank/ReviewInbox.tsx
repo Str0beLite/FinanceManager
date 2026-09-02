@@ -64,7 +64,12 @@ export default function ReviewInbox() {
 interface InboxRowProps {
   row: PendingImport;
   categories: readonly Category[];
-  onApprove: (importId: string, categoryId: string, ruleMatch?: string) => void;
+  onApprove: (
+    importId: string,
+    categoryId: string,
+    ruleMatch?: string,
+    fromPool?: boolean,
+  ) => void;
   onSplit: (importId: string, parts: readonly SplitPart[]) => void;
   onDismiss: (importId: string) => void;
 }
@@ -74,6 +79,7 @@ function InboxRow({ row, categories, onApprove, onSplit, onDismiss }: InboxRowPr
   const disabled = categories.length === 0;
   const [categoryId, setCategoryId] = useState('');
   const [remember, setRemember] = useState(true);
+  const [fromPool, setFromPool] = useState(false);
   const [splitting, setSplitting] = useState(false);
   const split = useSplit(row.amountCents);
   // Statement lines carry store numbers and city codes, so the rule text is
@@ -149,7 +155,9 @@ function InboxRow({ row, categories, onApprove, onSplit, onDismiss }: InboxRowPr
               variant="primary"
               className="shrink-0"
               disabled={disabled || !categoryId}
-              onClick={() => onApprove(row.id, categoryId, remember ? match : undefined)}
+              onClick={() =>
+                onApprove(row.id, categoryId, remember ? match : undefined, fromPool)
+              }
             >
               <Icon name="approve" />
               File it
@@ -176,6 +184,15 @@ function InboxRow({ row, categories, onApprove, onSplit, onDismiss }: InboxRowPr
                   className={inputClasses}
                 />
               )}
+
+              {/* Not something a rule can learn: the next charge from this
+                  merchant is an ordinary one until you say otherwise. */}
+              <Toggle
+                checked={fromPool}
+                onChange={setFromPool}
+                label="Pay from savings"
+                description="Comes out of the pool instead of this month's budget."
+              />
             </>
           )}
 
